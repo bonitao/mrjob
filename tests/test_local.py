@@ -186,7 +186,7 @@ class LocalMRJobRunnerEndToEndTestCase(SandboxedTestCase):
                           '2\tfoo\n', '2\tfoo\n', '2\tfoo\n',
                           '3\tqux\n', '3\tqux\n', '3\tqux\n'])
 
-    def gz_test(self, dir_path_name):
+    def gz_helper(self, dir_path_name):
         contents_gz = ['bar\n', 'qux\n', 'foo\n', 'bar\n', 'qux\n', 'foo\n']
         contents_normal = ['foo\n', 'bar\n', 'bar\n']
         all_contents_sorted = sorted(contents_gz + contents_normal)
@@ -230,7 +230,7 @@ class LocalMRJobRunnerEndToEndTestCase(SandboxedTestCase):
                          all_contents_sorted)
 
     def test_dont_split_gz(self):
-        self.gz_test(self.tmp_dir)
+        self.gz_helper(self.tmp_dir)
 
     def test_relative_gz_path(self):
         current_directory = os.getcwd()
@@ -240,7 +240,7 @@ class LocalMRJobRunnerEndToEndTestCase(SandboxedTestCase):
 
         self.addCleanup(change_back_directory)
         os.chdir(self.tmp_dir)
-        self.gz_test('')
+        self.gz_helper('')
 
     def test_multi_step_counters(self):
         stdin = StringIO('foo\nbar\n')
