@@ -15,10 +15,10 @@ import logging
 import posixpath
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 from mrjob.fs.base import Filesystem
 from mrjob.ssh import ssh_cat

@@ -18,9 +18,11 @@ for :py:mod:`mrjob`.
 """
 
 import glob
+from six import iteritems
 from itertools import chain
 import logging
 import os
+import six
 
 from mrjob.util import expand_path
 
@@ -70,7 +72,7 @@ class OptionStore(dict):
         unrecognized_opts = set(opts) - self.ALLOWED_KEYS
         if unrecognized_opts:
             log.warn(error_fmt % ', '.join(sorted(unrecognized_opts)))
-            return dict((k, v) for k, v in opts.iteritems()
+            return dict((k, v) for k, v in iteritems(opts)
                         if k in self.ALLOWED_KEYS)
         else:
             return opts
@@ -195,7 +197,7 @@ def load_opts_from_mrjob_conf(runner_alias, conf_path=None,
     inherited = []
     if conf.get('include', None):
         includes = conf['include']
-        if isinstance(includes, basestring):
+        if isinstance(includes, six.string_types):
             includes = [includes]
 
         for include in includes:
@@ -299,7 +301,7 @@ def combine_cmds(*cmds):
 
     if cmd is None:
         return None
-    elif isinstance(cmd, basestring):
+    elif isinstance(cmd, six.string_types):
         return shlex_split(cmd)
     else:
         return list(cmd)
@@ -358,7 +360,7 @@ def _combine_envs_helper(envs, local):
     result = {}
     for env in envs:
         if env:
-            for key, value in env.iteritems():
+            for key, value in iteritems(env):
                 if key.endswith('PATH') and result.get(key):
                     result[key] = value + pathsep + result[key]
                 else:
@@ -442,7 +444,7 @@ def calculate_opt_priority(opts, opt_dicts):
     opt_priority = dict((opt, -1) for opt in opts)
     for priority, opt_dict in enumerate(opt_dicts):
         if opt_dict:
-            for opt, value in opt_dict.iteritems():
+            for opt, value in iteritems(opt_dict):
                 if value is not None:
                     opt_priority[opt] = priority
     return opt_priority

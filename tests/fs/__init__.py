@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from StringIO import StringIO
+from six.moves import StringIO
 
 from tests.sandbox import SandboxedTestCase
 

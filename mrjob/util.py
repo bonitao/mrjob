@@ -15,6 +15,7 @@
 """Utility functions for MRJob that have no external dependencies."""
 
 # don't add imports here that aren't part of the standard Python library,
+from six import iteritems
 # since MRJobs need to run in Amazon's generic EMR environment
 
 from collections import defaultdict
@@ -339,7 +340,7 @@ def populate_option_groups_with_options(assignments, indexed_options):
                            :py:func:`util.scrape_options_and_index_by_dest`
     :param indexed_options: options to use when populating the parsers/groups
     """
-    for opt_group, opt_dest_list in assignments.iteritems():
+    for opt_group, opt_dest_list in iteritems(assignments):
         new_options = []
         for option_dest in assignments[opt_group]:
             for option in indexed_options[option_dest]:

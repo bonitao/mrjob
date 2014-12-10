@@ -16,6 +16,8 @@
 """Base class for all runners."""
 
 import copy
+from six import iteritems
+import six
 import datetime
 import getpass
 import logging
@@ -33,10 +35,10 @@ from subprocess import check_call
 import tempfile
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 try:
     import simplejson as json
@@ -205,7 +207,7 @@ class RunnerOptionStore(OptionStore):
         # old API accepts strings for cleanup
         # new API wants lists
         for opt_key in ('cleanup', 'cleanup_on_failure'):
-            if isinstance(self[opt_key], basestring):
+            if isinstance(self[opt_key], six.string_types):
                 self[opt_key] = [self[opt_key]]
 
         def validate_cleanup(error_str, opt_list):
@@ -942,7 +944,7 @@ class MRJobRunner(object):
 
         # setup_cmds
         for cmd in self._opts['setup_cmds']:
-            if not isinstance(cmd, basestring):
+            if not isinstance(cmd, six.string_types):
                 cmd = cmd_line(cmd)
             setup.append([cmd])
 
@@ -1119,12 +1121,12 @@ class MRJobRunner(object):
         jobconf = self._jobconf_for_step(step_num)
 
         if uses_generic_jobconf(version):
-            for key, value in sorted(jobconf.iteritems()):
+            for key, value in sorted(iteritems(jobconf)):
                 if value is not None:
                     args.extend(['-D', '%s=%s' % (key, value)])
         # old-style jobconf
         else:
-            for key, value in sorted(jobconf.iteritems()):
+            for key, value in sorted(iteritems(jobconf)):
                 if value is not None:
                     args.extend(['-jobconf', '%s=%s' % (key, value)])
 
@@ -1133,7 +1135,7 @@ class MRJobRunner(object):
             args.extend(['-partitioner', self._partitioner])
 
         # cmdenv
-        for key, value in sorted(self._opts['cmdenv'].iteritems()):
+        for key, value in sorted(iteritems(self._opts['cmdenv'])):
             args.append('-cmdenv')
             args.append('%s=%s' % (key, value))
 
@@ -1149,7 +1151,7 @@ class MRJobRunner(object):
 
     def _arg_hash_paths(self, type, upload_mgr):
         """Helper function for the *upload_args methods."""
-        for name, path in self._working_dir_mgr.name_to_path(type).iteritems():
+        for name, path in iteritems(self._working_dir_mgr.name_to_path(type)):
             uri = self._upload_mgr.uri(path)
             yield '%s#%s' % (uri, name)
 

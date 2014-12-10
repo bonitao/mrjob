@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 import sys
 
+from six import iteritems, itervalues
 from mrjob.pool import est_time_to_hour
 from mrjob.pool import pool_hash_and_name
 from mrjob.tools.emr.terminate_idle_job_flows import (
@@ -267,13 +268,13 @@ class JobFlowInspectionTestCase(MockEMRAndS3TestCase):
         )
 
         # add job flow IDs and fake names to the mock job flows
-        for jfid, jf in self.mock_emr_job_flows.iteritems():
+        for jfid, jf in iteritems(self.mock_emr_job_flows):
             jf.jobflowid = jfid
             jf.name = jfid[2:].replace('_', ' ').title() + ' Job Flow'
 
     def terminated_jfs(self):
         return sorted(jf.jobflowid
-                      for jf in self.mock_emr_job_flows.itervalues()
+                      for jf in itervalues(self.mock_emr_job_flows)
                       if jf.state in ('SHUTTING_DOWN', 'TERMINATED'))
 
     def inspect_and_maybe_terminate_quietly(self, stdout=None, **kwargs):

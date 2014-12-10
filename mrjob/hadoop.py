@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import errno
+from six import iteritems
 import getpass
 import logging
 import os
@@ -265,16 +266,16 @@ class HadoopJobRunner(MRJobRunner):
         self._mkdir_on_hdfs(self._upload_mgr.prefix)
 
         log.info('Copying local files into %s' % self._upload_mgr.prefix)
-        for path, uri in self._upload_mgr.path_to_uri().iteritems():
+        for path, uri in iteritems(self._upload_mgr.path_to_uri()):
             self._upload_to_hdfs(path, uri)
 
     def _mkdir_on_hdfs(self, path):
         log.debug('Making directory %s on HDFS' % path)
-        
+
         hadoop_version = self.get_hadoop_version()
         # from version 0.23 / 2.x, -mkdir needs a -p option to create parent directories
         # test if version == 0.23
-        if (mrjob.compat.version_gte(hadoop_version, "0.23") and not mrjob.compat.version_gte(hadoop_version, "0.24")): 
+        if (mrjob.compat.version_gte(hadoop_version, "0.23") and not mrjob.compat.version_gte(hadoop_version, "0.24")):
             self.invoke_hadoop(['fs', '-mkdir', '-p', path])
         # test if version >= 2.0
         elif mrjob.compat.version_gte(hadoop_version, "2.0"):

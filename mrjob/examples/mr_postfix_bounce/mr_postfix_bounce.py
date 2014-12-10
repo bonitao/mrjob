@@ -25,6 +25,7 @@ import re
 import simplejson
 import time
 
+from six import iteritems
 from mrjob.job import MRJob
 
 
@@ -124,7 +125,7 @@ def process_postfix_log_dict(decoded, bounce_rules):
             if any(domain_startswith(decoded, domain)
                    for domain in domain_prefixes):
                 for point_of_failure, failure_strings in (
-                    failure_conditions.iteritems()):
+                    iteritems(failure_conditions)):
                     for failure_string in failure_strings:
                         if failure_string in decoded.get(point_of_failure, ''):
                             return to

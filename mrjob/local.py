@@ -17,6 +17,7 @@ them together. Useful for testing."""
 
 
 import logging
+import six
 from subprocess import Popen
 from subprocess import PIPE
 import sys
@@ -244,7 +245,7 @@ class LocalMRJobRunner(SimMRJobRunner):
         :return: dict(proc=Popen, args=[process args], write_to=file)
         """
         log.info('> %s > %s' % (' | '.join(
-            args if isinstance(args, basestring) else cmd_line(args)
+            args if isinstance(args, six.string_types) else cmd_line(args)
             for args in procs_args), output_path))
 
         with open(output_path, 'w') as write_to:

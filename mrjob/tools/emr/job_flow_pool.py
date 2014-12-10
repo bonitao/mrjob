@@ -24,6 +24,7 @@ from optparse import OptionError
 from optparse import OptionGroup
 from optparse import OptionParser
 
+from six import iteritems
 from mrjob.emr import EMRJobRunner
 from mrjob.emr import est_time_to_hour
 from mrjob.job import MRJob
@@ -86,7 +87,7 @@ minutes to the hour)
 
 def pprint_pools(runner):
     pools = get_pools(runner.make_emr_conn())
-    for pool_name, job_flows in pools.iteritems():
+    for pool_name, job_flows in iteritems(pools):
         print('-' * len(pool_name))
         print(pool_name)
         print('-' * len(pool_name))

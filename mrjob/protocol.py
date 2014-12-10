@@ -18,7 +18,7 @@ information, see :ref:`job-protocols` and :ref:`writing-protocols`.
 """
 # don't add imports here that aren't part of the standard Python library,
 # since MRJobs need to run in Amazon's generic EMR environment
-import cPickle
+from six.moves import cPickle
 
 from mrjob.util import safeeval
 

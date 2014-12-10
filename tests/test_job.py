@@ -298,6 +298,9 @@ class ProtocolsTestCase(unittest.TestCase):
                           "None\t'baz'\n"))
 
 
+UNENCODABLE_RAW_INPUT = ('foo\n' +
+                             '\xaaabc\n' +
+                             'bar\n')
 class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
 
     class MRBoringJSONJob(MRJob):
@@ -312,7 +315,7 @@ class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
                       '"notabs"\n')
 
     UNENCODABLE_RAW_INPUT = ('foo\n' +
-                             '\xaa\n' +
+                             '\x80abc\n' +
                              'bar\n')
 
     STRICT_MRJOB_CONF ={'runners': {'inline': {'strict_protocols': True}}}

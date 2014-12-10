@@ -22,11 +22,12 @@ import os
 import sys
 import time
 
+
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 from mrjob.conf import combine_dicts
 from mrjob.options import add_basic_opts

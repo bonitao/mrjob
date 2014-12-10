@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from six import iteritems
+import six
 
 from mrjob.util import cmd_line
 
@@ -124,11 +126,11 @@ class MRStep(object):
         self._steps = steps
 
     def __repr__(self):
-        not_none = dict((k, v) for k, v in self._steps.iteritems()
+        not_none = dict((k, v) for k, v in iteritems(self._steps)
                         if v is not None)
         return '%s(%s)' % (
             self.__class__.__name__,
-            ', '.join('%s=%r' % (k, v) for k, v in not_none.iteritems()))
+            ', '.join('%s=%r' % (k, v) for k, v in iteritems(not_none)))
 
     def __eq__(self, other):
         return (isinstance(other, MRStep) and self._steps == other._steps)
@@ -154,7 +156,7 @@ class MRStep(object):
     def _render_substep(self, cmd_key, pre_filter_key=None):
         if self._steps[cmd_key]:
             cmd = self._steps[cmd_key]
-            if not isinstance(cmd, basestring):
+            if not isinstance(cmd, six.string_types):
                 cmd = cmd_line(cmd)
             if (pre_filter_key and self._steps[pre_filter_key]):
                 raise ValueError('Cannot specify both %s and %s' % (

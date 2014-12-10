@@ -23,6 +23,7 @@ ad-hoc mock objects.
 """
 from datetime import datetime
 from datetime import timedelta
+from six import iteritems, itervalues
 import hashlib
 
 try:
@@ -81,11 +82,11 @@ def add_mock_s3_data(mock_s3_fs, data, time_modified=None):
     time last modified."""
     if time_modified is None:
         time_modified = datetime.utcnow()
-    for bucket_name, key_name_to_bytes in data.iteritems():
+    for bucket_name, key_name_to_bytes in iteritems(data):
         mock_s3_fs.setdefault(bucket_name, {'keys': {}, 'location': ''})
         bucket = mock_s3_fs[bucket_name]
 
-        for key_name, bytes in key_name_to_bytes.iteritems():
+        for key_name, bytes in iteritems(key_name_to_bytes):
             bucket['keys'][key_name] = (bytes, time_modified)
 
 
@@ -592,7 +593,7 @@ class MockEmrConnection(object):
                     400, 'Bad Request', body=err_xml(
                     'Created-before field is before earliest allowed value'))
 
-        jfs = sorted(self.mock_emr_job_flows.itervalues(),
+        jfs = sorted(itervalues(self.mock_emr_job_flows),
                      key=lambda jf: jf.creationdatetime,
                      reverse=True)
 
@@ -790,7 +791,7 @@ class MockEmrObject(object):
     can set any attribute on."""
 
     def __init__(self, **kwargs):
-        for key, value in kwargs.iteritems():
+        for key, value in iteritems(kwargs):
             setattr(self, key, value)
 
     def __setattr__(self, key, value):
@@ -820,4 +821,4 @@ class MockEmrObject(object):
             self.__class__.__module__,
             self.__class__.__name__,
             ', '.join('%s=%r' % (k, v)
-                      for k, v in sorted(self.__dict__.iteritems()))))
+                      for k, v in sorted(iteritems(self.__dict__)))))

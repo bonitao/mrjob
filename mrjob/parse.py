@@ -18,14 +18,14 @@ from functools import wraps
 import logging
 import re
 import time
-from urlparse import ParseResult
-from urlparse import urlparse as urlparse_buggy
+from six.moves.urllib_parse import ParseResult
+from six.moves.urllib_parse import urlparse as urlparse_buggy
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 from mrjob.compat import uses_020_counters
 
@@ -72,10 +72,10 @@ def is_uri(uri):
     """Return True if *uri* is any sort of URI."""
     if is_windows_path(uri):
         return False
-    
+
     return bool(urlparse(uri).scheme)
 
-    
+
 def is_s3_uri(uri):
     """Return True if *uri* can be parsed into an S3 URI, False otherwise."""
     try:

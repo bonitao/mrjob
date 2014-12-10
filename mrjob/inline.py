@@ -22,10 +22,10 @@ import logging
 import os
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 from mrjob.job import MRJob
 from mrjob.parse import parse_mr_job_stderr

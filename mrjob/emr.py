@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import logging
+from six import iteritems
+import six
 import os
 import os.path
 import pipes
@@ -23,7 +25,7 @@ import re
 import signal
 import socket
 import time
-import urllib2
+import six.moves.urllib_request
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
@@ -31,10 +33,10 @@ from subprocess import Popen
 from subprocess import PIPE
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 try:
     import simplejson as json  # preferred because of C speedups
@@ -595,7 +597,7 @@ class EMRJobRunner(MRJobRunner):
                 if isinstance(maybe_path_dict, dict):
                     self._bootstrap_dir_mgr.add(**maybe_path_dict)
 
-        if not (isinstance(self._opts['additional_emr_info'], basestring)
+        if not (isinstance(self._opts['additional_emr_info'], six.string_types)
                 or self._opts['additional_emr_info'] is None):
             self._opts['additional_emr_info'] = json.dumps(
                 self._opts['additional_emr_info'])
@@ -875,7 +877,7 @@ class EMRJobRunner(MRJobRunner):
 
         s3_conn = self.make_s3_conn()
 
-        for path, s3_uri in self._upload_mgr.path_to_uri().iteritems():
+        for path, s3_uri in iteritems(self._upload_mgr.path_to_uri()):
             log.debug('uploading %s -> %s' % (path, s3_uri))
             s3_key = self.make_s3_key(s3_uri, s3_conn)
             s3_key.set_contents_from_filename(path)
@@ -1157,7 +1159,7 @@ class EMRJobRunner(MRJobRunner):
         emr_conn = self.make_emr_conn()
         log.debug('Calling run_jobflow(%r, %r, %s)' % (
             self._job_name, self._opts['s3_log_uri'],
-            ', '.join('%s=%r' % (k, v) for k, v in args.iteritems())))
+            ', '.join('%s=%r' % (k, v) for k, v in iteritems(args))))
         emr_job_flow_id = emr_conn.run_jobflow(
             self._job_name, self._opts['s3_log_uri'], **args)
 
@@ -1519,7 +1521,7 @@ class EMRJobRunner(MRJobRunner):
 
                 if self._show_tracker_progress:
                     try:
-                        tracker_handle = urllib2.urlopen(self._tracker_url)
+                        tracker_handle = six.moves.urllib_request.urlopen(self._tracker_url)
                         tracker_page = ''.join(tracker_handle.readlines())
                         tracker_handle.close()
                         # first two formatted percentages, map then reduce
@@ -1963,7 +1965,7 @@ class EMRJobRunner(MRJobRunner):
 
         # setup_cmds
         for cmd in self._opts['bootstrap_cmds']:
-            if not isinstance(cmd, basestring):
+            if not isinstance(cmd, six.string_types):
                 cmd = cmd_line(cmd)
             bootstrap.append([cmd])
 
@@ -1997,7 +1999,7 @@ class EMRJobRunner(MRJobRunner):
         # download files using hadoop fs
         writeln('# download files and mark them executable')
         for name, path in sorted(
-                self._bootstrap_dir_mgr.name_to_path('file').iteritems()):
+                iteritems(self._bootstrap_dir_mgr.name_to_path('file'))):
             uri = self._upload_mgr.uri(path)
             writeln('hadoop fs -copyToLocal %s $__mrjob_PWD/%s' %
                     (pipes.quote(uri), pipes.quote(name)))
@@ -2229,7 +2231,7 @@ class EMRJobRunner(MRJobRunner):
                         int(ig.instancerequestcount))
 
             # check if there are enough compute units
-            for role, req_cu in role_to_req_cu.iteritems():
+            for role, req_cu in iteritems(role_to_req_cu):
                 req_num_instances = role_to_req_num_instances[role]
                 # if we have at least as many units of the right type,
                 # don't bother counting compute units
@@ -2316,7 +2318,7 @@ class EMRJobRunner(MRJobRunner):
             # depending on insertion/deletion order.
             sorted(
                 (name, self.md5sum(path)) for name, path
-                in self._bootstrap_dir_mgr.name_to_path('file').iteritems()
+                in iteritems(self._bootstrap_dir_mgr.name_to_path('file'))
                 if not path == self._mrjob_tar_gz_path),
             self._opts['additional_emr_info'],
             self._bootstrap,

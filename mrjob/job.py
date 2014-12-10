@@ -13,9 +13,10 @@
 # limitations under the License.
 """Class to inherit your MapReduce jobs from. See :doc:`guides/writing-mrjobs`
 for more information."""
-# don't add imports here that aren't part of the standard Python library,
-# since MRJobs need to run in Amazon's generic EMR environment
 from __future__ import print_function
+# don't add imports here that aren't part of the standard Python library,
+from six import iteritems
+# since MRJobs need to run in Amazon's generic EMR environment
 
 import codecs
 import inspect
@@ -23,12 +24,13 @@ import itertools
 import logging
 from optparse import OptionGroup
 import sys
+import six
 
 try:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     StringIO  # quiet "redefinition of unused ..." warning from pyflakes
 except ImportError:
-    from StringIO import StringIO
+    from six.moves import StringIO
 
 try:
     import simplejson as json
@@ -338,7 +340,7 @@ class MRJob(MRJobLauncher):
         # MRStep takes commands as strings, but the user defines them in the
         # class as functions that return strings, so call the functions.
         updates = {}
-        for k, v in kwargs.iteritems():
+        for k, v in iteritems(kwargs):
             if k.endswith('_cmd'):
                 updates[k] = v()
 
@@ -411,11 +413,12 @@ class MRJob(MRJobLauncher):
         if isinstance(group, unicode) or isinstance(counter, unicode):
             group = unicode(group).replace(',', ';')
             counter = unicode(counter).replace(',', ';')
-            stderr = codecs.getwriter('utf-8')(self.stderr)
         else:
             group = str(group).replace(',', ';')
             counter = str(counter).replace(',', ';')
-            stderr = self.stderr
+        # The text we will write is either ascii or utf8, and since the latter
+        # is a superset of the former, just do the simple thing.
+        stderr = codecs.getwriter('utf-8')(self.stderr)
 
         stderr.write(
             u'reporter:counter:%s,%s,%d\n' % (group, counter, amount))

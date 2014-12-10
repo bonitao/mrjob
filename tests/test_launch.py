@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-import cStringIO
+from six.moves import StringIO
 import inspect
 import logging
 from optparse import OptionError
@@ -290,7 +290,7 @@ class TestToolLogging(unittest.TestCase):
     """
     def test_default_options(self):
         with no_handlers_for_logger('__main__'):
-            with patch.object(sys, 'stderr', cStringIO.StringIO()) as stderr:
+            with patch.object(sys, 'stderr', StringIO()) as stderr:
                 MRJob.set_up_logging()
                 log = logging.getLogger('__main__')
                 log.info('INFO')
@@ -299,7 +299,7 @@ class TestToolLogging(unittest.TestCase):
 
     def test_verbose(self):
         with no_handlers_for_logger('__main__'):
-            with patch.object(sys, 'stderr', cStringIO.StringIO()) as stderr:
+            with patch.object(sys, 'stderr', StringIO()) as stderr:
                 MRJob.set_up_logging(verbose=True)
                 log = logging.getLogger('__main__')
                 log.info('INFO')
