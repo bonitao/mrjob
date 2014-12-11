@@ -483,13 +483,13 @@ class MRJobRunner(object):
                 if not name:
                     break
 
-                yield name
+                yield six.b(name)
 
                 path = base
 
         for filename in self.ls(output_dir):
             subpath = filename[len(output_dir):]
-            if not any(name.startswith('_') for name in split_path(subpath)):
+            if not any(name.startswith(six.b('_')) for name in split_path(subpath)):
                 for line in self._cat_file(filename):
                     yield line
 
@@ -1031,11 +1031,14 @@ class MRJobRunner(object):
 
                 stdin_path = os.path.join(self._get_local_tmp_dir(), 'STDIN')
                 log.debug('dumping stdin to local file %s' % stdin_path)
-                with open(stdin_path, 'w') as stdin_file:
+                with open(stdin_path, 'wb') as stdin_file:
                     for line in self._stdin:
+                        eol = '\n'
+                        if not isinstance(line, six.text_type):
+                            eol = b'\n'
                         # catch missing newlines (often happens with test data)
-                        if not line.endswith('\n'):
-                            line += '\n'
+                        if not line.endswith(eol):
+                            line += eol
                         stdin_file.write(line)
 
                 self._stdin_path = stdin_path

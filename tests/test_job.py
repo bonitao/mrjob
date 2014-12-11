@@ -19,9 +19,11 @@
 import os
 from subprocess import Popen
 from subprocess import PIPE
-from StringIO import StringIO
+from six import StringIO, BytesIO
 import sys
+import six
 import time
+from six import itervalues
 
 try:
     import unittest2 as unittest
@@ -233,30 +235,30 @@ class ProtocolsTestCase(unittest.TestCase):
     def test_default_protocols(self):
         mr_job = MRBoringJob()
         self.assertMethodsEqual(mr_job.pick_protocols(0, 'mapper'),
-                                (RawValueProtocol.read, JSONProtocol.write))
+                                (RawValueProtocol().read, JSONProtocol().write))
         self.assertMethodsEqual(mr_job.pick_protocols(0, 'reducer'),
-                               (JSONProtocol.read, JSONProtocol.write))
+                               (JSONProtocol().read, JSONProtocol().write))
 
     def test_explicit_default_protocols(self):
         mr_job2 = self.MRBoringJob2().sandbox()
         self.assertMethodsEqual(mr_job2.pick_protocols(0, 'mapper'),
-                                (JSONProtocol.read, PickleProtocol.write))
+                                (JSONProtocol().read, PickleProtocol().write))
         self.assertMethodsEqual(mr_job2.pick_protocols(0, 'reducer'),
-                                (PickleProtocol.read, ReprProtocol.write))
+                                (PickleProtocol().read, ReprProtocol().write))
 
         mr_job3 = self.MRBoringJob3()
         self.assertMethodsEqual(mr_job3.pick_protocols(0, 'mapper'),
-                                (RawValueProtocol.read, ReprProtocol.write))
+                                (RawValueProtocol().read, ReprProtocol().write))
         # output protocol should default to JSON
         self.assertMethodsEqual(mr_job3.pick_protocols(0, 'reducer'),
-                                (ReprProtocol.read, JSONProtocol.write))
+                                (ReprProtocol().read, JSONProtocol().write))
 
         mr_job4 = self.MRBoringJob4()
         self.assertMethodsEqual(mr_job4.pick_protocols(0, 'mapper'),
-                                (RawValueProtocol.read, ReprProtocol.write))
+                                (RawValueProtocol().read, ReprProtocol().write))
         # output protocol should default to JSON
         self.assertMethodsEqual(mr_job4.pick_protocols(0, 'reducer'),
-                                (ReprProtocol.read, JSONProtocol.write))
+                                (ReprProtocol().read, JSONProtocol().write))
 
     def test_mapper_raw_value_to_json(self):
         RAW_INPUT = StringIO('foo\nbar\nbaz\n')
@@ -298,9 +300,6 @@ class ProtocolsTestCase(unittest.TestCase):
                           "None\t'baz'\n"))
 
 
-UNENCODABLE_RAW_INPUT = ('foo\n' +
-                             '\xaaabc\n' +
-                             'bar\n')
 class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
 
     class MRBoringJSONJob(MRJob):
@@ -309,51 +308,52 @@ class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
         def reducer(self, key, values):
             yield(key, list(values))
 
-    BAD_JSON_INPUT = ('BAD\tJSON\n' +
-                      '"foo"\t"bar"\n' +
-                      '"too"\t"many"\t"tabs"\n' +
-                      '"notabs"\n')
+    BAD_JSON_INPUT = (b'BAD\tJSON\n' +
+                      b'"foo"\t"bar"\n' +
+                      b'"too"\t"many"\t"tabs"\n' +
+                      b'"notabs"\n')
 
-    UNENCODABLE_RAW_INPUT = ('foo\n' +
-                             '\x80abc\n' +
-                             'bar\n')
+    UNENCODABLE_RAW_INPUT = (b'foo\n' +
+                             b'\xaa\n' +
+                             b'bar\n')
 
     STRICT_MRJOB_CONF ={'runners': {'inline': {'strict_protocols': True}}}
 
     def assertJobHandlesUndecodableInput(self, job_args):
         job = self.MRBoringJSONJob(job_args)
-        job.sandbox(stdin=StringIO(self.BAD_JSON_INPUT))
+        job.sandbox(stdin=BytesIO(self.BAD_JSON_INPUT))
 
         with job.make_runner() as r:
             r.run()
 
             # good data should still get through
-            self.assertEqual(''.join(r.stream_output()), '"foo"\t["bar"]\n')
+            self.assertEqual(six.b('').join(r.stream_output()),
+                             six.b('"foo"\t["bar"]\n'))
 
             # exception type varies between versions of json/simplejson,
             # so just make sure there were three exceptions of some sort
             counters = r.counters()[0]
-            self.assertEqual(counters.keys(), ['Undecodable input'])
+            self.assertEqual(list(counters.keys()), ['Undecodable input'])
             self.assertEqual(
-                sum(counters['Undecodable input'].itervalues()), 3)
+                sum(itervalues(counters['Undecodable input'])), 3)
 
     def assertJobRaisesExceptionOnUndecodableInput(self, job_args):
         job = self.MRBoringJSONJob(job_args)
-        job.sandbox(stdin=StringIO(self.BAD_JSON_INPUT))
+        job.sandbox(stdin=BytesIO(self.BAD_JSON_INPUT))
 
         with job.make_runner() as r:
             self.assertRaises(Exception, r.run)
 
     def assertJobHandlesUnencodableOutput(self, job_args):
         job = MRBoringJob(job_args)
-        job.sandbox(stdin=StringIO(self.UNENCODABLE_RAW_INPUT))
+        job.sandbox(stdin=BytesIO(self.UNENCODABLE_RAW_INPUT))
 
         with job.make_runner() as r:
             r.run()
 
             # good data should still get through
-            self.assertEqual(''.join(r.stream_output()),
-                             'null\t["bar", "foo"]\n')
+            self.assertEqual(six.b('').join(r.stream_output()),
+                             six.b('null\t["bar", "foo"]\n'))
 
             # exception type varies between versions of json/simplejson,
             # so just make sure there were three exceptions of some sort
@@ -363,7 +363,7 @@ class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
 
     def assertJobRaisesExceptionOnUnencodableOutput(self, job_args):
         job = MRBoringJob(job_args)
-        job.sandbox(stdin=StringIO(self.UNENCODABLE_RAW_INPUT))
+        job.sandbox(stdin=BytesIO(self.UNENCODABLE_RAW_INPUT))
 
         with job.make_runner() as r:
             self.assertRaises(Exception, r.run)
@@ -973,31 +973,31 @@ class RunJobTestCase(SandboxedTestCase):
         env = combine_envs(os.environ,
                            {'PYTHONPATH': os.path.abspath('.')})
         proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
-        stdout, stderr = proc.communicate(input='foo\nbar\nbar\n')
+        stdout, stderr = proc.communicate(input=six.b('foo\nbar\nbar\n'))
         return stdout, stderr, proc.returncode
 
     def test_quiet(self):
         stdout, stderr, returncode = self.run_job(['-q'])
-        self.assertEqual(sorted(StringIO(stdout)), ['1\t"foo"\n',
-                                                    '2\t"bar"\n',
-                                                    '3\tnull\n'])
-        self.assertEqual(stderr, '')
+        self.assertEqual(sorted(BytesIO(stdout)), [six.b('1\t"foo"\n'),
+                                                   six.b('2\t"bar"\n'),
+                                                   six.b('3\tnull\n')])
+        self.assertEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
 
     def test_verbose(self):
         stdout, stderr, returncode = self.run_job()
-        self.assertEqual(sorted(StringIO(stdout)), ['1\t"foo"\n',
-                                                    '2\t"bar"\n',
-                                                    '3\tnull\n'])
-        self.assertNotEqual(stderr, '')
+        self.assertEqual(sorted(BytesIO(stdout)), [six.b('1\t"foo"\n'),
+                                                   six.b('2\t"bar"\n'),
+                                                   six.b('3\tnull\n')])
+        self.assertNotEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
         normal_stderr = stderr
 
         stdout, stderr, returncode = self.run_job(['-v'])
-        self.assertEqual(sorted(StringIO(stdout)), ['1\t"foo"\n',
-                                                    '2\t"bar"\n',
-                                                    '3\tnull\n'])
-        self.assertNotEqual(stderr, '')
+        self.assertEqual(sorted(BytesIO(stdout)), [six.b('1\t"foo"\n'),
+                                                   six.b('2\t"bar"\n'),
+                                                   six.b('3\tnull\n')])
+        self.assertNotEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
         self.assertGreater(len(stderr), len(normal_stderr))
 
@@ -1006,8 +1006,8 @@ class RunJobTestCase(SandboxedTestCase):
 
         args = ['--no-output', '--output-dir', self.tmp_dir]
         stdout, stderr, returncode = self.run_job(args)
-        self.assertEqual(stdout, '')
-        self.assertNotEqual(stderr, '')
+        self.assertEqual(stdout, six.b(''))
+        self.assertNotEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
 
         # make sure the correct output is in the temp dir

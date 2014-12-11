@@ -20,6 +20,7 @@ import logging
 import os
 import shutil
 import stat
+import six
 
 from six import iteritems
 from mrjob.compat import add_translated_jobconf_for_hadoop_version
@@ -370,7 +371,7 @@ class SimMRJobRunner(MRJobRunner):
             # together
             if keep_sorted:
                 def reducer_key(line):
-                    return line.split('\t')[0]
+                    return line.split(six.b('\t'))[0]
 
                 # assume that input is a collection of key <tab> value pairs
                 # match all non-tab characters
@@ -391,7 +392,7 @@ class SimMRJobRunner(MRJobRunner):
             outfile = None
 
             try:
-                outfile = open(outfile_name, 'w')
+                outfile = open(outfile_name, 'wb')
 
                 # write each line to a file as long as we are within the limit
                 # (split_size)

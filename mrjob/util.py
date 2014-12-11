@@ -15,7 +15,6 @@
 """Utility functions for MRJob that have no external dependencies."""
 
 # don't add imports here that aren't part of the standard Python library,
-from six import iteritems
 # since MRJobs need to run in Amazon's generic EMR environment
 
 from collections import defaultdict
@@ -33,6 +32,8 @@ import sys
 import tarfile
 import zipfile
 import zlib
+from six import iteritems
+from six.moves import xrange
 
 try:
     import bz2
@@ -422,7 +423,7 @@ def read_file(path, fileobj=None, yields_lines=True, cleanup=None):
     try:
         # open path if we need to
         if fileobj is None:
-            f = open(path)
+            f = open(path, 'rb')
         else:
             f = fileobj
 

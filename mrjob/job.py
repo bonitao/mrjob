@@ -335,7 +335,7 @@ class MRJob(MRJobLauncher):
         kwargs = dict((func_name, getattr(self, func_name))
                       for func_name in _JOB_STEP_FUNC_PARAMS
                       if (getattr(self, func_name).__func__ is not
-                          getattr(MRJob, func_name).__func__))
+                          getattr(MRJob(), func_name).__func__))
 
         # MRStep takes commands as strings, but the user defines them in the
         # class as functions that return strings, so call the functions.
@@ -400,7 +400,7 @@ class MRJob(MRJobLauncher):
         with semicolons (commas confuse Hadoop streaming).
         """
         # don't allow people to pass in floats
-        if not isinstance(amount, (int, long)):
+        if not isinstance(amount, six.integer_types):
             raise TypeError('amount must be an integer, not %r' % (amount,))
 
         # Extra commas screw up hadoop and there's no way to escape them. So
@@ -410,9 +410,9 @@ class MRJob(MRJobLauncher):
         #
         # The relevant Hadoop code is incrCounter(), here:
         # http://svn.apache.org/viewvc/hadoop/mapreduce/trunk/src/contrib/streaming/src/java/org/apache/hadoop/streaming/PipeMapRed.java?view=markup
-        if isinstance(group, unicode) or isinstance(counter, unicode):
-            group = unicode(group).replace(',', ';')
-            counter = unicode(counter).replace(',', ';')
+        if isinstance(group, six.text_type) or isinstance(counter, six.text_type):
+            group = six.text_type(group).replace(',', ';')
+            counter = six.text_type(counter).replace(',', ';')
         else:
             group = str(group).replace(',', ';')
             counter = str(counter).replace(',', ';')
@@ -434,12 +434,11 @@ class MRJob(MRJobLauncher):
         If the type of **msg** is ``unicode``, then the message will be written
         as unicode. Otherwise, it will be written as ASCII.
         """
-        if isinstance(msg, unicode):
+        if isinstance(msg, six.text_type):
             status = u'reporter:status:%s\n' % (msg,)
-            stderr = codecs.getwriter('utf-8')(self.stderr)
         else:
             status = 'reporter:status:%s\n' % (msg,)
-            stderr = self.stderr
+        stderr = codecs.getwriter('utf-8')(self.stderr)
         stderr.write(status)
         stderr.flush()
 
@@ -697,7 +696,7 @@ class MRJob(MRJobLauncher):
         def read_lines():
             for line in self._read_input():
                 try:
-                    key, value = read(line.rstrip('\r\n'))
+                    key, value = read(line.rstrip(six.b('\r\n')))
                     yield key, value
                 except Exception as e:
                     if self.options.strict_protocols:
@@ -708,7 +707,8 @@ class MRJob(MRJobLauncher):
 
         def write_line(key, value):
             try:
-                print(write(key, value), file=self.stdout)
+                data = write(key, value)
+                print(data, file=self.stdout)
             except Exception as e:
                 if self.options.strict_protocols:
                     raise

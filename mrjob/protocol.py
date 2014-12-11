@@ -20,6 +20,8 @@ information, see :ref:`job-protocols` and :ref:`writing-protocols`.
 # since MRJobs need to run in Amazon's generic EMR environment
 from six.moves import cPickle
 
+import pudb
+import six
 from mrjob.util import safeeval
 
 try:
@@ -56,7 +58,7 @@ class _KeyCachingProtocol(object):
 
         :return: A tuple of ``(key, value)``."""
 
-        raw_key, raw_value = line.split('\t', 1)
+        raw_key, raw_value = line.split(six.b('\t'), 1)
 
         if raw_key != self._last_key_encoded:
             self._last_key_encoded = raw_key
