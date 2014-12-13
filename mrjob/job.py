@@ -18,19 +18,14 @@ from __future__ import print_function
 from six import iteritems
 # since MRJobs need to run in Amazon's generic EMR environment
 
-import codecs
 import inspect
 import itertools
 import logging
+import traceback
 from optparse import OptionGroup
 import sys
 import six
-
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
+from six import BytesIO
 
 try:
     import simplejson as json
@@ -50,6 +45,7 @@ from mrjob.step import JarStep
 from mrjob.step import MRStep
 from mrjob.step import _JOB_STEP_FUNC_PARAMS
 from mrjob.util import read_input
+from mrjob.util import binary_stream, is_bytes
 
 
 log = logging.getLogger(__name__)
@@ -416,12 +412,10 @@ class MRJob(MRJobLauncher):
         else:
             group = str(group).replace(',', ';')
             counter = str(counter).replace(',', ';')
-        # The text we will write is either ascii or utf8, and since the latter
-        # is a superset of the former, just do the simple thing.
-        stderr = codecs.getwriter('utf-8')(self.stderr)
+        stderr = self.stderr
 
-        stderr.write(
-            u'reporter:counter:%s,%s,%d\n' % (group, counter, amount))
+        counter_str = u'reporter:counter:%s,%s,%d\n' % (group, counter, amount)
+        stderr.write(counter_str)
         stderr.flush()
 
     def set_status(self, msg):
@@ -438,7 +432,7 @@ class MRJob(MRJobLauncher):
             status = u'reporter:status:%s\n' % (msg,)
         else:
             status = 'reporter:status:%s\n' % (msg,)
-        stderr = codecs.getwriter('utf-8')(self.stderr)
+        stderr = self.stderr
         stderr.write(status)
         stderr.flush()
 
@@ -644,7 +638,8 @@ class MRJob(MRJobLauncher):
         We currently output something like ``MR M R``, but expect this to
         change!
         """
-        print(json.dumps(self._steps_desc()), file=self.stdout)
+        steps_json = json.dumps(self._steps_desc())
+        self.stdout.write(steps_json.encode('utf-8') + b'\n')
 
     def _steps_desc(self):
         step_descs = []
@@ -695,9 +690,13 @@ class MRJob(MRJobLauncher):
 
         def read_lines():
             for line in self._read_input():
+                assert(is_bytes(line))
                 try:
-                    key, value = read(line.rstrip(six.b('\r\n')))
+                    key, value = read(line.rstrip(b'\r\n'))
                     yield key, value
+                except TypeError:
+                    traceback.print_exc()
+                    raise
                 except Exception as e:
                     if self.options.strict_protocols:
                         raise
@@ -707,8 +706,11 @@ class MRJob(MRJobLauncher):
 
         def write_line(key, value):
             try:
-                data = write(key, value)
-                print(data, file=self.stdout)
+                data = write(key, value).encode('utf-8')
+                self.stdout.write(data + b'\n')
+            except TypeError:
+                traceback.print_exc()
+                raise
             except Exception as e:
                 if self.options.strict_protocols:
                     raise
@@ -1183,7 +1185,7 @@ class MRJob(MRJobLauncher):
         :param protocol: A protocol instance to use. Defaults to
                          ``JSONProtocol()``.
         """
-        if self.stdout == sys.stdout:
+        if self.stdout == binary_stream(sys.stdout):
             raise AssertionError('You must call sandbox() first;'
                                  ' parse_output() is for testing only.')
 
@@ -1193,7 +1195,7 @@ class MRJob(MRJobLauncher):
         if protocol is None:
             protocol = JSONProtocol()
 
-        lines = StringIO(self.stdout.getvalue())
+        lines = BytesIO(self.stdout.getvalue())
         return [protocol.read(line) for line in lines]
 
 

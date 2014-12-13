@@ -21,6 +21,7 @@ import os
 import shutil
 import stat
 import six
+import io
 
 from six import iteritems
 from mrjob.compat import add_translated_jobconf_for_hadoop_version
@@ -392,7 +393,7 @@ class SimMRJobRunner(MRJobRunner):
             outfile = None
 
             try:
-                outfile = open(outfile_name, 'wb')
+                outfile = io.open(outfile_name, 'wb')
 
                 # write each line to a file as long as we are within the limit
                 # (split_size)
@@ -404,7 +405,7 @@ class SimMRJobRunner(MRJobRunner):
 
                         outfile_name = create_outfile(path, total_bytes)
                         outfile.close()
-                        outfile = open(outfile_name, 'w')
+                        outfile = io.open(outfile_name, 'wb')
 
                         bytes_written = 0
 

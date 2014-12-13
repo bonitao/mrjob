@@ -20,6 +20,8 @@ import re
 import time
 from six.moves.urllib_parse import ParseResult
 from six.moves.urllib_parse import urlparse as urlparse_buggy
+import six
+from six import BytesIO
 
 try:
     from six.moves import StringIO
@@ -418,8 +420,12 @@ def parse_mr_job_stderr(stderr, counters=None):
     """
     # For the corresponding code in Hadoop Streaming, see ``incrCounter()`` in
     # http://svn.apache.org/viewvc/hadoop/mapreduce/trunk/src/contrib/streaming/src/java/org/apache/hadoop/streaming/PipeMapRed.java?view=markup
-    if isinstance(stderr, str):
+    if isinstance(stderr, six.text_type) or isinstance(stderr, six.string_types):
         stderr = StringIO(stderr)
+    elif isinstance(stderr, six.binary_type):
+        raise Exception("unexpected bytes data in stderr\n")
+    elif isinstance(stderr, BytesIO) and not isinstance(stderr, StringIO):
+        raise Exception("unexpected bytes stream in stderr\n")
 
     if counters is None:
         counters = {}

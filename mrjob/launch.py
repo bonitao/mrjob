@@ -21,13 +21,8 @@ from optparse import OptionParser
 import os
 import sys
 import time
+from six import BytesIO, StringIO
 
-
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
 
 from mrjob.conf import combine_dicts
 from mrjob.options import add_basic_opts
@@ -44,6 +39,7 @@ from mrjob.runner import CLEANUP_CHOICES
 from mrjob.util import log_to_null
 from mrjob.util import log_to_stream
 from mrjob.util import parse_and_save_options
+from mrjob.util import binary_stream
 
 
 log = logging.getLogger(__name__)
@@ -113,8 +109,8 @@ class MRJobLauncher(object):
 
         # Make it possible to redirect stdin, stdout, and stderr, for testing
         # See sandbox(), below.
-        self.stdin = sys.stdin
-        self.stdout = sys.stdout
+        self.stdin = binary_stream(sys.stdin)
+        self.stdout = binary_stream(sys.stdout)
         self.stderr = sys.stderr
 
     @classmethod
@@ -686,8 +682,8 @@ class MRJobLauncher(object):
             self.assertEqual(mrjob.stdout.getvalue(), ...)
             self.assertEqual(parse_mr_job_stderr(mr_job.stderr), ...)
         """
-        self.stdin = stdin or StringIO()
-        self.stdout = stdout or StringIO()
+        self.stdin = binary_stream(stdin) or BytesIO()
+        self.stdout = binary_stream(stdout) or BytesIO()
         self.stderr = stderr or StringIO()
 
         return self

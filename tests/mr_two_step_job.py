@@ -41,7 +41,8 @@ class CustomJSONProtocol(object):
     """
 
     def read(self, line):
-        k, v = line.split('\t', 1)
+        tline = line.decode('utf-8')
+        k, v = tline.split('\t', 1)
         return (json.loads(k), json.loads(v))
 
     def write(self, key, value):

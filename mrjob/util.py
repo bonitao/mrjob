@@ -32,8 +32,10 @@ import sys
 import tarfile
 import zipfile
 import zlib
+import six
 from six import iteritems
 from six.moves import xrange
+import io
 
 try:
     import bz2
@@ -53,12 +55,24 @@ def bu(model, target):
     return target
 
 def binary_stream(stream):
+    if not stream:
+       return stream
     if isinstance(stream, io.TextIOWrapper):
         return stream.buffer
+    if isinstance(stream, io.BufferedReader):
+        return stream
+    if isinstance(stream, io.BufferedWriter):
+        return stream
     if isinstance(stream, io.BytesIO):
         return stream
     if isinstance(stream, io.StringIO):
         return io.BytesIO(stream.getvalue().encode('utf-8'))
+    if isinstance(stream, six.text_type):
+        return stream.encode('utf-8')
+    if isinstance(stream, six.binary_type):
+        return stream
+    if isinstance(stream, list):
+        return [binary_stream(x) for x in stream]
     # Given a stream like object, it seems I can't really  say whether it will
     # return bytes or text. If we are in PY2 world, it does not make a
     # difference.
@@ -67,8 +81,13 @@ def binary_stream(stream):
     # Since we can't say whether we are reading bytes or text, give up. We could
     # alternatively convert after reading, but that is too invasive to the
     # codebase and potentially performance affecting.
-    raise IOError('Unable to convert stream into a binary stream.')
+    raise IOError('Unable to convert stream of type %s into a binary stream.' %
+                  type(stream))
 
+def is_bytes(line):
+    return isinstance(line, six.binary_type)
+def is_text(line):
+    return isinstance(line, six.text_type)
 
 
 class NullHandler(logging.Handler):
@@ -392,7 +411,7 @@ def read_input(path, stdin=None):
     any iterable that yields lines (e.g. a list).
     """
     if stdin is None:
-        stdin = sys.stdin
+        stdin = binary_stream(sys.stdin)
 
     # handle '-' (special case)
     if path == '-':

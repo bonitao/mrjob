@@ -20,12 +20,8 @@ __author__ = 'Matthew Tai <mtai@adku.com>'
 
 import logging
 import os
+from six import BytesIO
 
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
 
 from mrjob.job import MRJob
 from mrjob.parse import parse_mr_job_stderr
@@ -146,9 +142,9 @@ class InlineMRJobRunner(SimMRJobRunner):
 
         # Use custom stdin
         if has_combiner:
-            child_stdout = StringIO()
+            child_stdout = BytesIO()
         else:
-            child_stdout = open(output_path, 'w')
+            child_stdout = open(output_path, 'wb')
 
         with save_current_environment():
             with save_cwd():
@@ -160,7 +156,7 @@ class InlineMRJobRunner(SimMRJobRunner):
 
         if has_combiner:
             sorted_lines = sorted(child_stdout.getvalue().splitlines())
-            combiner_stdin = StringIO('\n'.join(sorted_lines))
+            combiner_stdin = BytesIO(b'\n'.join(sorted_lines))
         else:
             child_stdout.flush()
 

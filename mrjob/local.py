@@ -18,6 +18,7 @@ them together. Useful for testing."""
 
 import logging
 import six
+import io
 from subprocess import Popen
 from subprocess import PIPE
 import sys
@@ -248,7 +249,7 @@ class LocalMRJobRunner(SimMRJobRunner):
             args if isinstance(args, six.string_types) else cmd_line(args)
             for args in procs_args), output_path))
 
-        with open(output_path, 'w') as write_to:
+        with io.open(output_path, 'wb') as write_to:
             procs = _chain_procs(procs_args, stdout=write_to, stderr=PIPE,
                                  cwd=working_dir, env=env)
             return [{'args': a, 'proc': proc, 'write_to': write_to}
@@ -282,6 +283,8 @@ class LocalMRJobRunner(SimMRJobRunner):
         * for all other lines, log an error, and yield the lines
         """
         for line in stderr:
+            assert(isinstance(line, six.text_type) or
+                   isinstance(line, six.string_types))
             # just pass one line at a time to parse_mr_job_stderr(),
             # so we can print error and status messages in realtime
             parsed = parse_mr_job_stderr(

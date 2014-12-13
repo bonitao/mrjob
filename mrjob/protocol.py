@@ -20,9 +20,10 @@ information, see :ref:`job-protocols` and :ref:`writing-protocols`.
 # since MRJobs need to run in Amazon's generic EMR environment
 from six.moves import cPickle
 
-import pudb
 import six
+
 from mrjob.util import safeeval
+from mrjob.util import is_bytes
 
 try:
     import simplejson as json  # preferred because of C speedups
@@ -58,7 +59,7 @@ class _KeyCachingProtocol(object):
 
         :return: A tuple of ``(key, value)``."""
 
-        raw_key, raw_value = line.split(six.b('\t'), 1)
+        raw_key, raw_value = line.split(b'\t', 1)
 
         if raw_key != self._last_key_encoded:
             self._last_key_encoded = raw_key
@@ -177,6 +178,11 @@ class ReprProtocol(_KeyCachingProtocol):
         return safeeval(value)
 
     def _dumps(self, value):
+        if six.PY3 and is_bytes(value):
+            # We either need to sacrifice compatibility or risk an exception
+            # here. Since people dealing with non-utf-8 bytes are unlikely to
+            # use the repr protocol, we go with the latter.
+            value = value.decode('utf-8')
         return repr(value)
 
 

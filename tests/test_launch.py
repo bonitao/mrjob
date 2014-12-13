@@ -123,6 +123,8 @@ class CommandLineArgsTestCase(unittest.TestCase):
         self.assertRaises(ValueError, MRJobLauncher, args=['--quux', 'baz'])
 
     def test_should_exit_when_invoked_as_script(self):
+        # TODO(davi) This test is not properly isolated and reads stuff from the
+        # system installation.
         args = [sys.executable, inspect.getsourcefile(MRJobLauncher),
                 '--quux', 'baz']
         # add . to PYTHONPATH (in case mrjob isn't actually installed)
