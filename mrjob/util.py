@@ -46,17 +46,10 @@ except ImportError:
 #: .. deprecated:: 0.4
 is_ironpython = "IronPython" in sys.version
 
-""" Make target literal to be of types byte if model is byte"""
-def bu(model, target):
-    if isinstance(model, six.binary_type):
-        return six.b(target)
-    elif isinstance(model, six.text_type):
-        return six.u(target)
-    return target
 
 def binary_stream(stream):
     if not stream:
-       return stream
+        return stream
     if isinstance(stream, io.TextIOWrapper):
         return stream.buffer
     if isinstance(stream, io.BufferedReader):
@@ -84,10 +77,56 @@ def binary_stream(stream):
     raise IOError('Unable to convert stream of type %s into a binary stream.' %
                   type(stream))
 
+
+def text_stream(stream):
+    if not stream:
+        return stream
+    if isinstance(stream, io.TextIOWrapper):
+        return stream
+    if isinstance(stream, io.BufferedReader):
+        return TextIOWrapper(stream)
+    if isinstance(stream, io.BufferedWriter):
+        return TextIOWrapper(stream)
+    if isinstance(stream, io.BytesIO):
+        return TextIOWrapper(stream)
+    if isinstance(stream, io.StringIO):
+        return stream
+    if isinstance(stream, six.text_type):
+        return stream
+    if isinstance(stream, six.binary_type):
+        return stream.decode('utf-8')
+    if isinstance(stream, list):
+        return [text_stream(x) for x in stream]
+    # Given a stream like object, it seems I can't really  say whether it will
+    # return bytes or text. If we are in PY2 world, it does not make a
+    # difference.
+    if six.PY2:
+        return stream
+    # Since we can't say whether we are reading bytes or text, give up. We could
+    # alternatively convert after reading, but that is too invasive to the
+    # codebase and potentially performance affecting.
+    raise IOError('Unable to convert stream of type %s into a text stream.' %
+                  type(stream))
+
+
+def to_bytes(line):
+    if line is None or isinstance(line, six.binary_type):
+        return line
+    return line.encode('utf-8')
+
+
+def to_text(line):
+    if line is None or isinstance(line, six.text_type):
+        return line
+    return line.decode('utf-8')
+
+
 def is_bytes(line):
-    return isinstance(line, six.binary_type)
+    return isinstance(line, six.binary_type) or line is None
+
+
 def is_text(line):
-    return isinstance(line, six.text_type)
+    return isinstance(line, six.text_type) or line is None
 
 
 class NullHandler(logging.Handler):
@@ -115,14 +154,15 @@ def buffer_iterator_to_line_iterator(iterator):
         This may append a newline to your last chunk of data. In v0.5.0
         it will not, for better compatibility with file objects.
     """
-    buf = ''
+    buf = b''
     for chunk in iterator:
         buf += chunk
+
 
         # this is basically splitlines() without support for \r
         start = 0
         while True:
-            end = buf.find('\n', start) + 1
+            end = buf.find(b'\n', start) + 1
             if end:  # if find() returned -1, end would be 0
                 yield buf[start:end]
                 start = end
@@ -133,7 +173,7 @@ def buffer_iterator_to_line_iterator(iterator):
 
     if buf:
         # in v0.5.0, don't append the newline
-        yield buf + '\n'
+        yield buf + b'\n'
 
 
 def cmd_line(args):
@@ -157,7 +197,7 @@ def extract_dir_for_tar(archive_path, compression='gz'):
     # Open the file for read-only streaming (no random seeks)
     tar = tarfile.open(archive_path, mode='r|%s' % compression)
     # Grab the first item
-    first_member = next(tar)
+    first_member = tar.next()
     tar.close()
     # Return the first path component of the item's name
     return first_member.name.split('/')[0]
@@ -521,9 +561,9 @@ def _bunzip2_stream(fileobj, bufsize=1024):
         if not chunk:
             return
 
-        parts = d.decompress(chunk)
-        for part in parts:
-            yield part
+        part = d.decompress(chunk)
+        # Previous code was yielding one character at a time
+        yield part
 
 
 def bunzip2_stream(fileobj, bufsize=1024):
@@ -716,7 +756,6 @@ def tar_and_gzip(dir, out_path, filter=None, prefix=''):
                 real_path = os.path.realpath(path)
                 path_in_tar_gz = os.path.join(prefix, rel_path)
                 tar_gz.add(real_path, arcname=path_in_tar_gz, recursive=False)
-
     tar_gz.close()
 
 

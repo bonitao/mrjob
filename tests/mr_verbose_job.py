@@ -14,6 +14,7 @@
 
 """We use this to test jobs that emit a large amount of stderr."""
 from __future__ import print_function
+from six.moves import xrange
 import sys
 
 from mrjob.job import MRJob

@@ -15,6 +15,7 @@
 """Trivial multi-step job, useful for testing runners."""
 from mrjob.job import MRJob
 from mrjob.step import MRStep
+from mrjob.util import is_bytes, to_bytes, to_text
 
 try:
     import simplejson as json  # preferred because of C speedups
@@ -29,10 +30,11 @@ class CustomRawValueProtocol(object):
     """
 
     def read(self, line):
+        assert(is_bytes(line))
         return (None, line)
 
     def write(self, key, value):
-        return value
+        return to_bytes(value)
 
 
 class CustomJSONProtocol(object):
@@ -41,12 +43,13 @@ class CustomJSONProtocol(object):
     """
 
     def read(self, line):
+        assert(is_bytes(line))
         tline = line.decode('utf-8')
         k, v = tline.split('\t', 1)
-        return (json.loads(k), json.loads(v))
+        return (json.loads(to_text(k)), json.loads(to_text(v)))
 
     def write(self, key, value):
-        return '%s\t%s' % (json.dumps(key), json.dumps(value))
+        return to_bytes('%s\t%s' % (json.dumps(key), json.dumps(value)))
 
 
 class MRTwoStepJob(MRJob):

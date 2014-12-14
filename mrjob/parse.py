@@ -22,6 +22,8 @@ from six.moves.urllib_parse import ParseResult
 from six.moves.urllib_parse import urlparse as urlparse_buggy
 import six
 from six import BytesIO
+from six.moves import xrange
+from mrjob.util import is_bytes, is_text, text_stream
 
 try:
     from six.moves import StringIO
@@ -181,7 +183,7 @@ def counter_unescape(escaped_string):
     :param escaped_string: string from a counter log line
     :type escaped_string: str
     """
-    escaped_string = escaped_string.decode('string_escape')
+    escaped_string = escaped_string.encode('utf-8').decode('unicode_escape')
     escaped_string = _HADOOP_0_20_ESCAPED_CHARS_RE.sub(r'\1', escaped_string)
     return escaped_string
 
@@ -207,6 +209,8 @@ def find_python_traceback(lines):
     in_traceback = False
 
     for line in lines:
+        if is_bytes(line):
+            line = line.decode('utf-8')
         if in_traceback:
             tb_lines.append(line)
 
@@ -420,12 +424,9 @@ def parse_mr_job_stderr(stderr, counters=None):
     """
     # For the corresponding code in Hadoop Streaming, see ``incrCounter()`` in
     # http://svn.apache.org/viewvc/hadoop/mapreduce/trunk/src/contrib/streaming/src/java/org/apache/hadoop/streaming/PipeMapRed.java?view=markup
-    if isinstance(stderr, six.text_type) or isinstance(stderr, six.string_types):
+    stderr = text_stream(stderr)
+    if is_text(stderr):
         stderr = StringIO(stderr)
-    elif isinstance(stderr, six.binary_type):
-        raise Exception("unexpected bytes data in stderr\n")
-    elif isinstance(stderr, BytesIO) and not isinstance(stderr, StringIO):
-        raise Exception("unexpected bytes stream in stderr\n")
 
     if counters is None:
         counters = {}

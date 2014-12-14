@@ -18,6 +18,7 @@ from __future__ import print_function
 from six import iteritems
 # since MRJobs need to run in Amazon's generic EMR environment
 
+import pudb
 import inspect
 import itertools
 import logging
@@ -706,7 +707,7 @@ class MRJob(MRJobLauncher):
 
         def write_line(key, value):
             try:
-                data = write(key, value).encode('utf-8')
+                data = write(key, value)
                 self.stdout.write(data + b'\n')
             except TypeError:
                 traceback.print_exc()

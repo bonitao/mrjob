@@ -33,6 +33,7 @@ from subprocess import Popen
 from subprocess import PIPE
 from subprocess import check_call
 import tempfile
+import io
 
 try:
     from six.moves import StringIO
@@ -1246,7 +1247,7 @@ class MRJobRunner(object):
 
                 # shovel bytes into the sort process
                 for input_path in input_paths:
-                    with open(input_path, 'r') as input:
+                    with io.open(input_path, 'rb') as input:
                         while True:
                             buf = input.read(_BUFFER_SIZE)
                             if not buf:

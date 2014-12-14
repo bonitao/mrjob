@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import six
 from tempfile import mkdtemp
 from shutil import rmtree
 
@@ -66,6 +67,8 @@ class EmptyMrjobConfTestCase(unittest.TestCase):
     # set to None if you don't want load_opts_from_mrjob_confs patched
     MRJOB_CONF_CONTENTS = EMPTY_MRJOB_CONF
 
+    if six.PY3:
+        assertItemsEqual = unittest.TestCase.assertCountEqual
     def setUp(self):
         super(EmptyMrjobConfTestCase, self).setUp()
 

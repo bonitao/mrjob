@@ -25,12 +25,7 @@ from subprocess import CalledProcessError
 import sys
 import tarfile
 import tempfile
-
-try:
-    from cStringIO import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from StringIO import StringIO
+from six.moves import StringIO
 
 try:
     import unittest2 as unittest
@@ -45,6 +40,7 @@ from mrjob.parse import JOB_NAME_RE
 from mrjob.runner import MRJobRunner
 from mrjob.util import log_to_stream
 from mrjob.util import tar_and_gzip
+from mrjob.util import binary_stream
 from tests.mr_os_walk_job import MROSWalkJob
 from tests.mr_two_step_job import MRTwoStepJob
 from tests.mr_word_count import MRWordCount
@@ -259,7 +255,7 @@ class TestStreamingOutput(unittest.TestCase):
 
         runner = InlineMRJobRunner(conf_paths=[], output_dir=self.tmp_dir)
         self.assertEqual(sorted(runner.stream_output()),
-                         ['A', 'B', 'C'])
+                         binary_stream(['A', 'B', 'C']))
 
 
 class TestInvokeSort(unittest.TestCase):
@@ -779,11 +775,11 @@ class SetupTestCase(SandboxedTestCase):
             with job.make_runner() as r:
                 r.run()
 
-                output = ''.join(r.stream_output())
+                output = b''.join(r.stream_output())
 
                 # stray ouput should be in stderr, not the job's output
                 self.assertIn('stray output', stderr.getvalue())
-                self.assertNotIn('stray output', output)
+                self.assertNotIn(b'stray output', output)
 
 
 class ExportJobNameTestCase(EmptyMrjobConfTestCase):

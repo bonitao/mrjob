@@ -283,8 +283,6 @@ class LocalMRJobRunner(SimMRJobRunner):
         * for all other lines, log an error, and yield the lines
         """
         for line in stderr:
-            assert(isinstance(line, six.text_type) or
-                   isinstance(line, six.string_types))
             # just pass one line at a time to parse_mr_job_stderr(),
             # so we can print error and status messages in realtime
             parsed = parse_mr_job_stderr(

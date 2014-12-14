@@ -313,6 +313,7 @@ class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
                       '"foo"\t"bar"\n' +
                       '"too"\t"many"\t"tabs"\n' +
                       '"notabs"\n')
+    # BAD_JSON_INPUT = ('"foo"\t"bar"\n')
 
     UNENCODABLE_RAW_INPUT = (b'foo\n' +
                              b'\xaa\n' +
@@ -328,8 +329,8 @@ class StrictProtocolsTestCase(EmptyMrjobConfTestCase):
             r.run()
 
             # good data should still get through
-            self.assertEqual(six.b('').join(r.stream_output()),
-                             six.b('"foo"\t["bar"]\n'))
+            self.assertEqual(b''.join(r.stream_output()),
+                             b'"foo"\t["bar"]\n')
 
             # exception type varies between versions of json/simplejson,
             # so just make sure there were three exceptions of some sort

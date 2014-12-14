@@ -15,7 +15,7 @@
 
 import logging
 import sys
-from StringIO import StringIO
+from six import StringIO, BytesIO
 from subprocess import PIPE
 from subprocess import Popen
 
@@ -87,21 +87,21 @@ subprocess.CalledProcessError: Command 'cd yelp-src-tree.tar.gz; ln -sf $(readli
             return Popen(args, stdout=PIPE, stderr=PIPE).communicate()
 
         # sanity-check normal operations
-        ok_stdout, ok_stderr = run('python', '-c', "print sorted('321')")
-        self.assertEqual(ok_stdout.rstrip(), "['1', '2', '3']")
-        self.assertEqual(find_python_traceback(StringIO(ok_stderr)), None)
+        ok_stdout, ok_stderr = run('python', '-c', "print(sorted('321'))")
+        self.assertEqual(ok_stdout.rstrip(), b"['1', '2', '3']")
+        self.assertEqual(find_python_traceback(BytesIO(ok_stderr)), None)
 
         # Oops, can't sort a number.
-        stdout, stderr = run('python', '-c', "print sorted(321)")
+        stdout, stderr = run('python', '-c', "print(sorted(321))")
 
         # We expect something like this:
         #
          # Traceback (most recent call last):
         #   File "<string>", line 1, in <module>
         # TypeError: 'int' object is not iterable
-        self.assertEqual(stdout, '')
+        self.assertEqual(stdout, b'')
         # save the traceback for the next step
-        tb = find_python_traceback(StringIO(stderr))
+        tb = find_python_traceback(BytesIO(stderr))
         self.assertNotEqual(tb, None)
         assert isinstance(tb, list)
         # The first line ("Traceback...") is not skipped
@@ -114,10 +114,10 @@ subprocess.CalledProcessError: Command 'cd yelp-src-tree.tar.gz; ln -sf $(readli
 
         # make sure we can find the same traceback in noise
         verbose_stdout, verbose_stderr = run(
-            'python', '-v', '-c', "print sorted(321)")
-        self.assertEqual(verbose_stdout, '')
+            'python', '-v', '-c', "print(sorted(321))")
+        self.assertEqual(verbose_stdout, b'')
         self.assertNotEqual(verbose_stderr, stderr)
-        verbose_tb = find_python_traceback(StringIO(verbose_stderr))
+        verbose_tb = find_python_traceback(BytesIO(verbose_stderr))
         self.assertEqual(verbose_tb, tb)
 
     def test_find_multiple_python_tracebacks(self):

@@ -20,10 +20,11 @@ information, see :ref:`job-protocols` and :ref:`writing-protocols`.
 # since MRJobs need to run in Amazon's generic EMR environment
 from six.moves import cPickle
 
+import pudb
 import six
 
 from mrjob.util import safeeval
-from mrjob.util import is_bytes
+from mrjob.util import to_bytes, to_text, is_bytes, is_text
 
 try:
     import simplejson as json  # preferred because of C speedups
@@ -59,6 +60,8 @@ class _KeyCachingProtocol(object):
 
         :return: A tuple of ``(key, value)``."""
 
+        assert(is_bytes(line))
+        line = to_bytes(line)
         raw_key, raw_value = line.split(b'\t', 1)
 
         if raw_key != self._last_key_encoded:
@@ -74,21 +77,26 @@ class _KeyCachingProtocol(object):
 
         :rtype: str
         :return: A line, without trailing newline."""
-        return '%s\t%s' % (self._dumps(key),
-                           self._dumps(value))
+        return b'\t'.join((self._dumps(key), self._dumps(value)))
 
 
 class JSONProtocol(_KeyCachingProtocol):
     """Encode ``(key, value)`` as two JSONs separated by a tab.
 
     Note that JSON has some limitations; dictionary keys must be strings,
-    and there's no distinction between lists and tuples."""
+    and there's no distinction between lists and tuples.
+    """
 
     def _loads(self, value):
-        return json.loads(value)
+        assert(is_bytes(value))
+        return json.loads(to_text(value))
 
     def _dumps(self, value):
-        return json.dumps(value)
+        # mimic behavior of json dumps in PY2 for compatibility,
+        # forbidding any bytes from not being valid utf-8
+        if is_bytes(value) and not is_text(value):
+            value.decode('utf-8')  # no need to capture result
+        return to_bytes(json.dumps(value))
 
 
 class JSONValueProtocol(object):
@@ -96,15 +104,16 @@ class JSONValueProtocol(object):
     (``key`` is read in as ``None``).
     """
     def read(self, line):
-        return (None, json.loads(line))
+        assert(is_bytes(line))
+        return (None, json.loads(to_text(line)))
 
     def write(self, key, value):
-        return json.dumps(value)
+        return to_bytes(json.dumps(value))
 
 
 class PickleProtocol(_KeyCachingProtocol):
     """Encode ``(key, value)`` as two string-escaped pickles separated
-    by a tab.
+    by a tab. In python 3, this is just a passthrough.
 
     We string-escape the pickles to avoid having to deal with stray
     ``\\t`` and ``\\n`` characters, which would confuse Hadoop
@@ -114,10 +123,17 @@ class PickleProtocol(_KeyCachingProtocol):
     """
 
     def _loads(self, value):
-        return cPickle.loads(value.decode('string_escape'))
+        assert(is_bytes(value))
+        if six.PY2:
+            value = value.decode('string_escape')
+        return cPickle.loads(value)
 
     def _dumps(self, value):
-        return cPickle.dumps(value).encode('string_escape')
+        d = cPickle.dumps(value)
+        if six.PY2:
+            d = d.encode('string_escape')
+        assert(is_bytes(d))
+        return d
 
 
 class PickleValueProtocol(object):
@@ -125,16 +141,21 @@ class PickleValueProtocol(object):
     (``key`` is read in as ``None``).
     """
     def read(self, line):
-        return (None, cPickle.loads(line.decode('string_escape')))
+        if six.PY2:
+            line = line.decode('string_escape')
+        return (None, cPickle.loads(line))
 
     def write(self, key, value):
-        return cPickle.dumps(value).encode('string_escape')
+        d = cPickle.dumps(value)
+        if six.PY2:
+            d = d.encode('string_escape')
+        return d
 
 
 # This was added in 0.3, so no @classmethod for backwards compatibility
 class RawProtocol(object):
     """Encode ``(key, value)`` as ``key`` and ``value`` separated by
-    a tab (``key`` and ``value`` should be bytestrings).
+    a tab (``key`` and ``value`` should be bytes).
 
     If ``key`` or ``value`` is ``None``, don't include a tab. When decoding a
     line with no tab in it, ``value`` will be ``None``.
@@ -145,26 +166,32 @@ class RawProtocol(object):
     we don't check.
     """
     def read(self, line):
-        key_value = line.split('\t', 1)
+        assert(is_bytes(line))
+        key_value = line.split(b'\t', 1)
         if len(key_value) == 1:
             key_value.append(None)
 
         return tuple(key_value)
 
     def write(self, key, value):
-        return '\t'.join(x for x in (key, value) if x is not None)
+        assert(is_bytes(key))
+        assert(is_bytes(value))
+        return b'\t'.join(x for x in (key, value) if x is not None)
 
 
 class RawValueProtocol(object):
     """Read in a line as ``(None, line)``. Write out ``(key, value)``
-    as ``value``. ``value`` must be a ``str``.
+    as ``value``. ``value`` must be a ``bytes``.
 
     The default way for a job to read its initial input.
     """
     def read(self, line):
+        assert(is_bytes(line))
         return (None, line)
 
     def write(self, key, value):
+        assert(is_bytes(key))
+        assert(is_bytes(value))
         return value
 
 
@@ -175,15 +202,16 @@ class ReprProtocol(_KeyCachingProtocol):
     """
 
     def _loads(self, value):
-        return safeeval(value)
+        assert(is_bytes(value))
+        return safeeval(to_text(value))
 
     def _dumps(self, value):
-        if six.PY3 and is_bytes(value):
+        if six.PY3 and isinstance(value, bytes):
             # We either need to sacrifice compatibility or risk an exception
             # here. Since people dealing with non-utf-8 bytes are unlikely to
             # use the repr protocol, we go with the latter.
             value = value.decode('utf-8')
-        return repr(value)
+        return to_bytes(repr(value))
 
 
 class ReprValueProtocol(object):
@@ -193,7 +221,8 @@ class ReprValueProtocol(object):
     This only works for basic types (we use :py:func:`mrjob.util.safeeval`).
     """
     def read(self, line):
-        return (None, safeeval(line))
+        assert(is_bytes(line))
+        return (None, safeeval(to_text(line)))
 
     def write(self, key, value):
-        return repr(value)
+        return to_bytes(repr(value))
