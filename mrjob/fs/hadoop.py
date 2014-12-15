@@ -19,17 +19,12 @@ from subprocess import Popen
 from subprocess import PIPE
 from subprocess import CalledProcessError
 
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
-
 from mrjob.fs.base import Filesystem
 from mrjob.parse import is_uri
 from mrjob.parse import urlparse
 from mrjob.util import cmd_line
 from mrjob.util import read_file
+from mrjob.portability import BytesIO, to_bytes
 
 
 log = logging.getLogger(__name__)
@@ -39,14 +34,14 @@ HADOOP_FILE_EXISTS_RE = re.compile(r'.*File exists.*')
 
 # used by ls() and path_exists()
 _HADOOP_LS_NO_SUCH_FILE = re.compile(
-    r'^lsr?: Cannot access .*: No such file or directory.')
+    br'^lsr?: Cannot access .*: No such file or directory.')
 
 # Deprecated: removing this in v0.5 and prepending _ to the other constants
 HADOOP_LSR_NO_SUCH_FILE = re.compile(
-    r'^lsr: Cannot access .*: No such file or directory.')
+    br'^lsr: Cannot access .*: No such file or directory.')
 
 # used by rm() (see below)
-HADOOP_RMR_NO_SUCH_FILE = re.compile(r'^rmr: hdfs://.*$')
+HADOOP_RMR_NO_SUCH_FILE = re.compile(br'^rmr: hdfs://.*$')
 
 
 class HadoopFilesystem(Filesystem):
@@ -88,8 +83,8 @@ class HadoopFilesystem(Filesystem):
 
         log_func = log.debug if proc.returncode == 0 else log.error
         if not return_stdout:
-            for line in StringIO(stdout):
-                log_func('STDOUT: ' + line.rstrip('\r\n'))
+            for line in BytesIO(stdout):
+                log_func(b'STDOUT: ' + line.rstrip(b'\r\n'))
 
         # check if STDERR is okay
         stderr_is_ok = False
@@ -100,8 +95,8 @@ class HadoopFilesystem(Filesystem):
                     break
 
         if not stderr_is_ok:
-            for line in StringIO(stderr):
-                log_func('STDERR: ' + line.rstrip('\r\n'))
+            for line in BytesIO(stderr):
+                log_func(b'STDERR: ' + line.rstrip(b'\r\n'))
 
         ok_returncodes = ok_returncodes or [0]
 
@@ -142,12 +137,12 @@ class HadoopFilesystem(Filesystem):
         except CalledProcessError:
             raise IOError("Could not ls %s" % path_glob)
 
-        for line in StringIO(stdout):
-            line = line.rstrip('\r\n')
-            fields = line.split(' ')
+        for line in BytesIO(stdout):
+            line = line.rstrip(b'\r\n')
+            fields = line.split(b' ')
 
             # Throw out directories
-            if fields[0].startswith('d'):
+            if fields[0].startswith(b'd'):
                 continue
 
             # Try to figure out which part of the line is the path
@@ -156,18 +151,19 @@ class HadoopFilesystem(Filesystem):
             # -rwxrwxrwx   1          3276 010-01-13 14:00 /foo/bar # S3
             path_index = None
             for index, field in enumerate(fields):
-                if len(field) == 5 and field[2] == ':':
+                if len(field) == 5 and field[2] == b':'[0]:
                     path_index = (index + 1)
             if not path_index:
-                raise IOError("Could not locate path in string '%s'" % line)
+                raise IOError("Could not locate path in string '%s'" %
+                              line.decode('utf-8'))
 
-            path = line.split(' ', path_index)[-1]
+            path = line.split(b' ', path_index)[-1]
             # handle fully qualified URIs from newer versions of Hadoop ls
             # (see Pull Request #577)
             if is_uri(path):
-                yield path
+                yield path.decode('utf-8')
             else:
-                yield hdfs_prefix + path
+                yield hdfs_prefix + path.decode('utf-8')
 
     def _cat_file(self, filename):
         # stream from HDFS

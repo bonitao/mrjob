@@ -16,7 +16,6 @@
 """Test the hadoop job runner."""
 
 
-from StringIO import StringIO
 import getpass
 import os
 import pty
@@ -36,6 +35,7 @@ from mrjob.hadoop import find_hadoop_streaming_jar
 from mrjob.hadoop import fully_qualify_hdfs_path
 from mrjob.util import bash_wrap
 from mrjob.util import shlex_split
+from mrjob.portability import StringIO
 
 from tests.mockhadoop import create_mock_hadoop_script
 from tests.mockhadoop import add_mock_hadoop_output

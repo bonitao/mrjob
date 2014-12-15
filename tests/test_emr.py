@@ -16,8 +16,7 @@
 """Tests for EMRJobRunner"""
 
 
-from contextlib import contextmanager
-from contextlib import nested
+from contextlib2 import contextmanager, ExitStack
 import copy
 from datetime import datetime
 from datetime import timedelta
@@ -28,7 +27,6 @@ import os
 import os.path
 import posixpath
 import shutil
-from StringIO import StringIO
 import tempfile
 import time
 
@@ -59,6 +57,7 @@ from mrjob.ssh import SSH_PREFIX
 from mrjob.util import bash_wrap
 from mrjob.util import log_to_stream
 from mrjob.util import tar_and_gzip
+from mrjob.portability import StringIO
 
 from tests.mockboto import DEFAULT_MAX_JOB_FLOWS_RETURNED
 from tests.mockboto import MockEmrConnection
@@ -2940,12 +2939,13 @@ class CleanUpJobTestCase(MockEMRAndS3TestCase):
     @contextmanager
     def _test_mode(self, mode):
         r = EMRJobRunner(conf_paths=[])
-        with nested(
-            patch.object(r, '_cleanup_local_scratch'),
-            patch.object(r, '_cleanup_remote_scratch'),
-            patch.object(r, '_cleanup_logs'),
-            patch.object(r, '_cleanup_job'),
-            patch.object(r, '_cleanup_job_flow')) as mocks:
+        with ExitStack() as stack:
+            fl = [ '_cleanup_local_scratch',
+                   '_cleanup_remote_scratch',
+                   '_cleanup_logs',
+                   '_cleanup_job',
+                   '_cleanup_job_flow']
+            mocks = [ stack.enter_context(patch.object(r, f)) for f in fl]
             r.cleanup(mode=mode)
             yield mocks
 

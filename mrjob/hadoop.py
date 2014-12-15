@@ -13,6 +13,7 @@
 # limitations under the License.
 import errno
 from six import iteritems
+from six.moves import xrange
 import getpass
 import logging
 import os
@@ -52,24 +53,24 @@ from mrjob.util import cmd_line
 log = logging.getLogger(__name__)
 
 # to filter out the log4j stuff that hadoop streaming prints out
-HADOOP_STREAMING_OUTPUT_RE = re.compile(r'^(\S+ \S+ \S+ \S+: )?(.*)$')
+HADOOP_STREAMING_OUTPUT_RE = re.compile(br'^(\S+ \S+ \S+ \S+: )?(.*)$')
 
 # used by mkdir()
-HADOOP_FILE_EXISTS_RE = re.compile(r'.*File exists.*')
+HADOOP_FILE_EXISTS_RE = re.compile(br'.*File exists.*')
 
 # used by ls()
 HADOOP_LSR_NO_SUCH_FILE = re.compile(
-    r'^lsr: Cannot access .*: No such file or directory.')
+    br'^lsr: Cannot access .*: No such file or directory.')
 
 # used by rm() (see below)
-HADOOP_RMR_NO_SUCH_FILE = re.compile(r'^rmr: hdfs://.*$')
+HADOOP_RMR_NO_SUCH_FILE = re.compile(br'^rmr: hdfs://.*$')
 
 # used to extract the job timestamp from stderr
 HADOOP_JOB_TIMESTAMP_RE = re.compile(
-    r'(INFO: )?Running job: job_(?P<timestamp>\d+)_(?P<step_num>\d+)')
+    br'(INFO: )?Running job: job_(?P<timestamp>\d+)_(?P<step_num>\d+)')
 
 # find version string in "Hadoop 0.20.203" etc.
-HADOOP_VERSION_RE = re.compile(r'^.*?(?P<version>(\d|\.)+).*?$')
+HADOOP_VERSION_RE = re.compile(br'^.*?(?P<version>(\d|\.)+).*?$')
 
 
 def find_hadoop_streaming_jar(path):
@@ -331,7 +332,7 @@ class HadoopJobRunner(MRJobRunner):
                 if pid == 0:  # we are the child process
                     os.execvp(step_args[0], step_args)
                 else:
-                    master = os.fdopen(master_fd)
+                    master = os.fdopen(master_fd, 'rb')
                     # reading from master gives us the subprocess's
                     # stderr and stdout (it's a fake terminal)
                     self._process_stderr_from_streaming(master)
@@ -385,9 +386,9 @@ class HadoopJobRunner(MRJobRunner):
 
         for line in treat_eio_as_eof(stderr):
             line = HADOOP_STREAMING_OUTPUT_RE.match(line).group(2)
-            log.info('HADOOP: ' + line)
+            log.info('HADOOP: ' + line.decode('utf-8'))
 
-            if 'Streaming Job Failed!' in line:
+            if b'Streaming Job Failed!' in line:
                 raise Exception(line)
 
             # The job identifier is printed to stderr. We only want to parse it

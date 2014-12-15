@@ -483,13 +483,13 @@ class MRJobRunner(object):
                 if not name:
                     break
 
-                yield six.b(name)
+                yield name
 
                 path = base
 
         for filename in self.ls(output_dir):
             subpath = filename[len(output_dir):]
-            if not any(name.startswith(six.b('_')) for name in split_path(subpath)):
+            if not any(name.startswith('_') for name in split_path(subpath)):
                 for line in self._cat_file(filename):
                     yield line
 
