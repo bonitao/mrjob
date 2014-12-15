@@ -18,18 +18,13 @@ from functools import wraps
 import logging
 import re
 import time
+import six
 from six.moves.urllib_parse import ParseResult
 from six.moves.urllib_parse import urlparse as urlparse_buggy
-import six
 from six import BytesIO
 from six.moves import xrange
-from mrjob.util import is_bytes, is_text, text_stream
+from mrjob.portability import to_text, to_bytes
 
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
 
 from mrjob.compat import uses_020_counters
 
@@ -209,8 +204,7 @@ def find_python_traceback(lines):
     in_traceback = False
 
     for line in lines:
-        if is_bytes(line):
-            line = line.decode('utf-8')
+        line = to_text(line)
         if in_traceback:
             tb_lines.append(line)
 
@@ -412,7 +406,7 @@ _STATUS_RE = re.compile(r'^reporter:status:(.*)$')
 def parse_mr_job_stderr(stderr, counters=None):
     """Parse counters and status messages out of MRJob output.
 
-    :param stderr: a filehandle, a list of lines, or a str containing data
+    :param stderr: a filehandle, a list of lines, or bytes containing data
     :param counters: Counters so far, to update; a map from group to counter
                      name to count.
 
@@ -424,16 +418,16 @@ def parse_mr_job_stderr(stderr, counters=None):
     """
     # For the corresponding code in Hadoop Streaming, see ``incrCounter()`` in
     # http://svn.apache.org/viewvc/hadoop/mapreduce/trunk/src/contrib/streaming/src/java/org/apache/hadoop/streaming/PipeMapRed.java?view=markup
-    stderr = text_stream(stderr)
-    if is_text(stderr):
-        stderr = StringIO(stderr)
+    stderr = to_bytes(stderr)
+    if isinstance(stderr, six.binary_type):
+        stderr = BytesIO(stderr) # convert into stream for iterating by line
 
     if counters is None:
         counters = {}
     statuses = []
     other = []
 
-    for line in stderr:
+    for line in to_text(stderr):
         m = _COUNTER_RE.match(line.rstrip('\r\n'))
         if m:
             group, counter, amount_str = m.groups()

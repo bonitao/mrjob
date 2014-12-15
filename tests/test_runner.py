@@ -40,7 +40,7 @@ from mrjob.parse import JOB_NAME_RE
 from mrjob.runner import MRJobRunner
 from mrjob.util import log_to_stream
 from mrjob.util import tar_and_gzip
-from mrjob.util import binary_stream
+from mrjob.portability import to_bytes
 from tests.mr_os_walk_job import MROSWalkJob
 from tests.mr_two_step_job import MRTwoStepJob
 from tests.mr_word_count import MRWordCount
@@ -255,7 +255,7 @@ class TestStreamingOutput(unittest.TestCase):
 
         runner = InlineMRJobRunner(conf_paths=[], output_dir=self.tmp_dir)
         self.assertEqual(sorted(runner.stream_output()),
-                         binary_stream(['A', 'B', 'C']))
+                         to_bytes(['A', 'B', 'C']))
 
 
 class TestInvokeSort(unittest.TestCase):

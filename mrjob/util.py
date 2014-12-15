@@ -32,10 +32,10 @@ import sys
 import tarfile
 import zipfile
 import zlib
-import six
 from six import iteritems
 from six.moves import xrange
-import io
+
+from mrjob.portability import to_bytes
 
 try:
     import bz2
@@ -45,88 +45,6 @@ except ImportError:
 
 #: .. deprecated:: 0.4
 is_ironpython = "IronPython" in sys.version
-
-
-def binary_stream(stream):
-    if not stream:
-        return stream
-    if isinstance(stream, io.TextIOWrapper):
-        return stream.buffer
-    if isinstance(stream, io.BufferedReader):
-        return stream
-    if isinstance(stream, io.BufferedWriter):
-        return stream
-    if isinstance(stream, io.BytesIO):
-        return stream
-    if isinstance(stream, io.StringIO):
-        return io.BytesIO(stream.getvalue().encode('utf-8'))
-    if isinstance(stream, six.text_type):
-        return stream.encode('utf-8')
-    if isinstance(stream, six.binary_type):
-        return stream
-    if isinstance(stream, list):
-        return [binary_stream(x) for x in stream]
-    # Given a stream like object, it seems I can't really  say whether it will
-    # return bytes or text. If we are in PY2 world, it does not make a
-    # difference.
-    if six.PY2:
-        return stream
-    # Since we can't say whether we are reading bytes or text, give up. We could
-    # alternatively convert after reading, but that is too invasive to the
-    # codebase and potentially performance affecting.
-    raise IOError('Unable to convert stream of type %s into a binary stream.' %
-                  type(stream))
-
-
-def text_stream(stream):
-    if not stream:
-        return stream
-    if isinstance(stream, io.TextIOWrapper):
-        return stream
-    if isinstance(stream, io.BufferedReader):
-        return TextIOWrapper(stream)
-    if isinstance(stream, io.BufferedWriter):
-        return TextIOWrapper(stream)
-    if isinstance(stream, io.BytesIO):
-        return TextIOWrapper(stream)
-    if isinstance(stream, io.StringIO):
-        return stream
-    if isinstance(stream, six.text_type):
-        return stream
-    if isinstance(stream, six.binary_type):
-        return stream.decode('utf-8')
-    if isinstance(stream, list):
-        return [text_stream(x) for x in stream]
-    # Given a stream like object, it seems I can't really  say whether it will
-    # return bytes or text. If we are in PY2 world, it does not make a
-    # difference.
-    if six.PY2:
-        return stream
-    # Since we can't say whether we are reading bytes or text, give up. We could
-    # alternatively convert after reading, but that is too invasive to the
-    # codebase and potentially performance affecting.
-    raise IOError('Unable to convert stream of type %s into a text stream.' %
-                  type(stream))
-
-
-def to_bytes(line):
-    if line is None or isinstance(line, six.binary_type):
-        return line
-    return line.encode('utf-8')
-
-
-def to_text(line):
-    if line is None or isinstance(line, six.text_type):
-        return line
-    return line.decode('utf-8')
-
-
-def is_bytes(line):
-    return isinstance(line, six.binary_type) or line is None
-
-
-def is_text(line):
-    return isinstance(line, six.text_type) or line is None
 
 
 class NullHandler(logging.Handler):
@@ -451,7 +369,7 @@ def read_input(path, stdin=None):
     any iterable that yields lines (e.g. a list).
     """
     if stdin is None:
-        stdin = binary_stream(sys.stdin)
+        stdin = to_bytes(sys.stdin)
 
     # handle '-' (special case)
     if path == '-':

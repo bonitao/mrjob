@@ -111,10 +111,10 @@ class NoOutputTestCase(unittest.TestCase):
         with patch.object(launcher, 'make_runner') as m_make_runner:
             runner = Mock()
             _mock_context_mgr(m_make_runner, runner)
-            runner.stream_output.return_value = ['a line']
+            runner.stream_output.return_value = [b'a line']
             launcher.run_job()
-            self.assertEqual(launcher.stdout.getvalue(), '')
-            self.assertEqual(launcher.stderr.getvalue(), '')
+            self.assertEqual(launcher.stdout.getvalue(), b'')
+            self.assertEqual(launcher.stderr.getvalue(), b'')
 
 
 class CommandLineArgsTestCase(unittest.TestCase):

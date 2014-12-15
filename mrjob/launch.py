@@ -21,7 +21,7 @@ from optparse import OptionParser
 import os
 import sys
 import time
-from six import BytesIO, StringIO
+from six import BytesIO
 
 
 from mrjob.conf import combine_dicts
@@ -39,7 +39,7 @@ from mrjob.runner import CLEANUP_CHOICES
 from mrjob.util import log_to_null
 from mrjob.util import log_to_stream
 from mrjob.util import parse_and_save_options
-from mrjob.util import binary_stream
+from mrjob.portability import to_bytes, to_text
 
 
 log = logging.getLogger(__name__)
@@ -109,9 +109,9 @@ class MRJobLauncher(object):
 
         # Make it possible to redirect stdin, stdout, and stderr, for testing
         # See sandbox(), below.
-        self.stdin = binary_stream(sys.stdin)
-        self.stdout = binary_stream(sys.stdout)
-        self.stderr = sys.stderr
+        self.stdin = to_bytes(sys.stdin)
+        self.stdout = to_bytes(sys.stdout)
+        self.stderr = to_bytes(sys.stderr)
 
     @classmethod
     def _usage(cls):
@@ -176,7 +176,7 @@ class MRJobLauncher(object):
         :param bool quiet: If true, don't log. Overrides *verbose*.
         :param bool verbose: If true, set log level to ``DEBUG`` (default is
                              ``INFO``)
-        :param bool stream: Stream to log to (default is ``sys.stderr``)
+        :param bool stream: Unicode stream to log to (default is ``sys.stderr``)
 
         This will also set up a null log handler for boto, so we don't get
         warnings if boto tries to log about throttling and whatnot.
@@ -200,7 +200,7 @@ class MRJobLauncher(object):
         """
         self.set_up_logging(quiet=self.options.quiet,
                             verbose=self.options.verbose,
-                            stream=self.stderr)
+                            stream=to_text(self.stderr))
 
         with self.make_runner() as runner:
             runner.run()
@@ -682,9 +682,9 @@ class MRJobLauncher(object):
             self.assertEqual(mrjob.stdout.getvalue(), ...)
             self.assertEqual(parse_mr_job_stderr(mr_job.stderr), ...)
         """
-        self.stdin = binary_stream(stdin) or BytesIO()
-        self.stdout = binary_stream(stdout) or BytesIO()
-        self.stderr = stderr or StringIO()
+        self.stdin = to_bytes(stdin) or BytesIO()
+        self.stdout = to_bytes(stdout) or BytesIO()
+        self.stderr = to_bytes(stderr) or BytesIO()
 
         return self
 

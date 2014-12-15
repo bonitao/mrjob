@@ -37,7 +37,7 @@ from mrjob.local import LocalMRJobRunner
 from mrjob.util import bash_wrap
 from mrjob.util import cmd_line
 from mrjob.util import read_file
-from mrjob.util import binary_stream
+from mrjob.portability import to_bytes
 from tests.mr_cmd_job import CmdJob
 from tests.mr_counting_job import MRCountingJob
 from tests.mr_exit_42_job import MRExit42Job
@@ -189,9 +189,9 @@ class LocalMRJobRunnerEndToEndTestCase(SandboxedTestCase):
                           '3\tqux\n', '3\tqux\n', '3\tqux\n'])
 
     def gz_helper(self, dir_path_name):
-        contents_gz = binary_stream(
+        contents_gz = to_bytes(
             ['bar\n', 'qux\n', 'foo\n', 'bar\n', 'qux\n', 'foo\n'])
-        contents_normal = binary_stream(['foo\n', 'bar\n', 'bar\n'])
+        contents_normal = to_bytes(['foo\n', 'bar\n', 'bar\n'])
         all_contents_sorted = sorted(contents_gz + contents_normal)
 
         input_gz_path = os.path.join(dir_path_name, 'input.gz')
@@ -343,11 +343,11 @@ class LargeAmountsOfStderrTestCase(unittest.TestCase):
             # look for expected output from MRVerboseJob
             stderr = mr_job.stderr.getvalue()
             self.assertIn(
-                "Counters from step 1:\n  Foo:\n    Bar: 10000", stderr)
-            self.assertIn('status: 0\n', stderr)
-            self.assertIn('status: 99\n', stderr)
-            self.assertNotIn('status: 100\n', stderr)
-            self.assertIn('STDERR: Qux\n', stderr)
+                b"Counters from step 1:\n  Foo:\n    Bar: 10000", stderr)
+            self.assertIn(b'status: 0\n', stderr)
+            self.assertIn(b'status: 99\n', stderr)
+            self.assertNotIn(b'status: 100\n', stderr)
+            self.assertIn(b'STDERR: Qux\n', stderr)
             # exception should appear in exception message
             self.assertIn('BOOM', repr(e))
         else:
@@ -402,9 +402,9 @@ class PythonBinTestCase(EmptyMrjobConfTestCase):
             mr_job.run_job()
 
         # expect debugging messages in stderr
-        self.assertIn('#', mr_job.stderr.getvalue())
+        self.assertIn(b'#', mr_job.stderr.getvalue())
         # python -v will surround the import with quotes depending on version
-        self.assertRegexpMatches(mr_job.stderr.getvalue(), r"import '?mrjob'?")
+        self.assertRegexpMatches(mr_job.stderr.getvalue(), br"import '?mrjob'?")
 
         # should still get expected results
         self.assertItemsEqual(mr_job.stdout.getvalue().splitlines(),

@@ -15,7 +15,7 @@
 """Trivial multi-step job, useful for testing runners."""
 from mrjob.job import MRJob
 from mrjob.step import MRStep
-from mrjob.util import is_bytes, to_bytes, to_text
+from mrjob.portability import is_bytes, to_bytes, to_text
 
 try:
     import simplejson as json  # preferred because of C speedups

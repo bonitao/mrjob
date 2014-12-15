@@ -20,11 +20,10 @@ information, see :ref:`job-protocols` and :ref:`writing-protocols`.
 # since MRJobs need to run in Amazon's generic EMR environment
 from six.moves import cPickle
 
-import pudb
 import six
 
 from mrjob.util import safeeval
-from mrjob.util import to_bytes, to_text, is_bytes, is_text
+from mrjob.portability import to_bytes, to_text, is_bytes, is_text
 
 try:
     import simplejson as json  # preferred because of C speedups
@@ -61,7 +60,6 @@ class _KeyCachingProtocol(object):
         :return: A tuple of ``(key, value)``."""
 
         assert(is_bytes(line))
-        line = to_bytes(line)
         raw_key, raw_value = line.split(b'\t', 1)
 
         if raw_key != self._last_key_encoded:
@@ -174,8 +172,7 @@ class RawProtocol(object):
         return tuple(key_value)
 
     def write(self, key, value):
-        assert(is_bytes(key))
-        assert(is_bytes(value))
+        assert(is_bytes(key) and is_bytes(value))
         return b'\t'.join(x for x in (key, value) if x is not None)
 
 
@@ -190,8 +187,7 @@ class RawValueProtocol(object):
         return (None, line)
 
     def write(self, key, value):
-        assert(is_bytes(key))
-        assert(is_bytes(value))
+        assert(is_bytes(key) and is_bytes(value))
         return value
 
 

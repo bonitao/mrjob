@@ -45,7 +45,7 @@ from mrjob.step import _IDENTITY_REDUCER
 from mrjob.step import JarStep
 from mrjob.step import MRStep
 from mrjob.util import log_to_stream
-from mrjob.util import binary_stream
+from mrjob.portability import to_bytes
 from tests.mr_hadoop_format_job import MRHadoopFormatJob
 from tests.mr_tower_of_powers import MRTowerOfPowers
 from tests.mr_two_step_job import MRTwoStepJob
@@ -269,7 +269,7 @@ class ProtocolsTestCase(unittest.TestCase):
         mr_job.run_mapper()
 
         self.assertEqual(mr_job.stdout.getvalue(),
-                         binary_stream('null\t"foo"\n' +
+                         to_bytes('null\t"foo"\n' +
                                        'null\t"bar"\n' +
                                        'null\t"baz"\n'))
 
@@ -283,7 +283,7 @@ class ProtocolsTestCase(unittest.TestCase):
         mr_job.run_reducer()
 
         self.assertEqual(mr_job.stdout.getvalue(),
-                         binary_stream(('"foo"\t["bar", "baz"]\n' +
+                         to_bytes(('"foo"\t["bar", "baz"]\n' +
                                         '"bar"\t["qux"]\n')))
 
     def test_output_protocol_with_no_final_reducer(self):
@@ -296,7 +296,7 @@ class ProtocolsTestCase(unittest.TestCase):
         mr_job.run_mapper()
 
         self.assertEqual(mr_job.stdout.getvalue(),
-                         binary_stream("None\t'foo'\n" +
+                         to_bytes("None\t'foo'\n" +
                                        "None\t'bar'\n" +
                                        "None\t'baz'\n"))
 
@@ -848,8 +848,8 @@ class StepNumTestCase(unittest.TestCase):
             mr_job.sandbox(input_lines)
             mr_job.run_mapper(0)
             self.assertEqual(mr_job.stdout.getvalue(),
-                             binary_stream('null\t"foo"\n' + '"foo"\tnull\n' +
-                                           'null\t"bar"\n' + '"bar"\tnull\n'))
+                             to_bytes('null\t"foo"\n' + '"foo"\tnull\n' +
+                                      'null\t"bar"\n' + '"bar"\tnull\n'))
 
         mapper0 = MRTwoStepJob()
         test_mapper0(mapper0, mapper0_input_lines)
@@ -867,9 +867,9 @@ class StepNumTestCase(unittest.TestCase):
             mr_job.sandbox(input_lines)
             mr_job.run_reducer(0)
             self.assertEqual(mr_job.stdout.getvalue(),
-                             binary_stream('"bar"\t1\n' +
-                                           '"foo"\t1\n' +
-                                           'null\t2\n'))
+                             to_bytes('"bar"\t1\n' +
+                                      '"foo"\t1\n' +
+                                      'null\t2\n'))
 
         reducer0 = MRTwoStepJob()
         test_reducer0(reducer0, reducer0_input_lines)
@@ -885,9 +885,9 @@ class StepNumTestCase(unittest.TestCase):
             mr_job.sandbox(input_lines)
             mr_job.run_mapper(1)
             self.assertEqual(mr_job.stdout.getvalue(),
-                             binary_stream('1\t"bar"\n' +
-                                           '1\t"foo"\n' +
-                                           '2\tnull\n'))
+                             to_bytes('1\t"bar"\n' +
+                                      '1\t"foo"\n' +
+                                      '2\tnull\n'))
 
         mapper1 = MRTwoStepJob()
         test_mapper1(mapper1, mapper1_input_lines)
@@ -985,26 +985,26 @@ class RunJobTestCase(SandboxedTestCase):
     def test_quiet(self):
         stdout, stderr, returncode = self.run_job(['-q'])
         self.assertEqual(sorted(BytesIO(stdout)),
-                         binary_stream(['1\t"foo"\n',
-                                        '2\t"bar"\n',
-                                        '3\tnull\n']))
+                         to_bytes(['1\t"foo"\n',
+                                   '2\t"bar"\n',
+                                   '3\tnull\n']))
         self.assertEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
 
     def test_verbose(self):
         stdout, stderr, returncode = self.run_job()
         self.assertEqual(sorted(BytesIO(stdout)),
-                         binary_stream(['1\t"foo"\n',
-                                        '2\t"bar"\n',
-                                        '3\tnull\n']))
+                         to_bytes(['1\t"foo"\n',
+                                   '2\t"bar"\n',
+                                   '3\tnull\n']))
         self.assertNotEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
         normal_stderr = stderr
 
         stdout, stderr, returncode = self.run_job(['-v'])
-        self.assertEqual(sorted(BytesIO(stdout)), [six.b('1\t"foo"\n'),
-                                                   six.b('2\t"bar"\n'),
-                                                   six.b('3\tnull\n')])
+        self.assertEqual(sorted(BytesIO(stdout)), [b'1\t"foo"\n',
+                                                   b'2\t"bar"\n',
+                                                   b'3\tnull\n'])
         self.assertNotEqual(stderr, six.b(''))
         self.assertEqual(returncode, 0)
         self.assertGreater(len(stderr), len(normal_stderr))

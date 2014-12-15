@@ -29,7 +29,6 @@ from mrjob.protocol import RawValueProtocol
 from mrjob.protocol import ReprProtocol
 from mrjob.protocol import ReprValueProtocol
 
-import pudb
 
 class Point(object):
     """A simple class to test encoding of objects."""

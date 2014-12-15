@@ -35,11 +35,6 @@ from subprocess import check_call
 import tempfile
 import io
 
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
 
 try:
     import simplejson as json
@@ -69,7 +64,7 @@ from mrjob.util import bash_wrap
 from mrjob.util import cmd_line
 from mrjob.util import file_ext
 from mrjob.util import tar_and_gzip
-from mrjob.util import binary_stream
+from mrjob.portability import to_bytes, StringIO
 
 
 log = logging.getLogger(__name__)
@@ -404,9 +399,9 @@ class MRJobRunner(object):
 
         # Where to read input from (log files, etc.)
         self._input_paths = input_paths or ['-']  # by default read from stdin
-        self._stdin = binary_stream(stdin)
+        self._stdin = to_bytes(stdin)
         if not self._stdin:
-            self._stdin = binary_stream(sys.stdin)
+            self._stdin = to_bytes(sys.stdin)
         self._stdin_path = None  # temp file containing dump from stdin
 
         # where a tarball of the mrjob library is stored locally
@@ -466,6 +461,7 @@ class MRJobRunner(object):
         if self._ran_job:
             raise AssertionError("Job already ran!")
 
+        log.info("RUNNING")
         self._run()
         self._ran_job = True
 

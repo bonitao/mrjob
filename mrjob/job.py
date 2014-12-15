@@ -46,7 +46,7 @@ from mrjob.step import JarStep
 from mrjob.step import MRStep
 from mrjob.step import _JOB_STEP_FUNC_PARAMS
 from mrjob.util import read_input
-from mrjob.util import binary_stream, is_bytes
+from mrjob.portability import to_bytes, is_bytes
 
 
 log = logging.getLogger(__name__)
@@ -416,7 +416,7 @@ class MRJob(MRJobLauncher):
         stderr = self.stderr
 
         counter_str = u'reporter:counter:%s,%s,%d\n' % (group, counter, amount)
-        stderr.write(counter_str)
+        stderr.write(to_bytes(counter_str))
         stderr.flush()
 
     def set_status(self, msg):
@@ -425,16 +425,10 @@ class MRJob(MRJobLauncher):
         This is also a good way of doing a keepalive for a job that goes a
         long time between outputs; Hadoop streaming usually times out jobs
         that give no output for longer than 10 minutes.
-
-        If the type of **msg** is ``unicode``, then the message will be written
-        as unicode. Otherwise, it will be written as ASCII.
         """
-        if isinstance(msg, six.text_type):
-            status = u'reporter:status:%s\n' % (msg,)
-        else:
-            status = 'reporter:status:%s\n' % (msg,)
+        status = u'reporter:status:%s\n' % (msg,)
         stderr = self.stderr
-        stderr.write(status)
+        stderr.write(to_bytes(status))
         stderr.flush()
 
     ### Running the job ###
@@ -1162,7 +1156,7 @@ class MRJob(MRJobLauncher):
         without a runner; normally you'd just use
         :py:meth:`runner.counters() <mrjob.runner.MRJobRunner.counters()>`.
         """
-        if self.stderr == sys.stderr:
+        if self.stderr == to_bytes(sys.stderr):
             raise AssertionError('You must call sandbox() first;'
                                  ' parse_counters() is for testing only.')
 
@@ -1186,7 +1180,7 @@ class MRJob(MRJobLauncher):
         :param protocol: A protocol instance to use. Defaults to
                          ``JSONProtocol()``.
         """
-        if self.stdout == binary_stream(sys.stdout):
+        if self.stdout == to_bytes(sys.stdout):
             raise AssertionError('You must call sandbox() first;'
                                  ' parse_output() is for testing only.')
 
