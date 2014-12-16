@@ -21,6 +21,7 @@
 import logging
 import os
 import re
+import six
 from subprocess import Popen
 from subprocess import PIPE
 
@@ -30,10 +31,10 @@ SSH_LOG_ROOT = '/mnt/var/log/hadoop'
 SSH_URI_RE = re.compile(
     r'^%s(?P<hostname>[^/]+)?(?P<filesystem_path>/.*)$' % (SSH_PREFIX,))
 
-HADOOP_JOB_LIST_NUM_RE = re.compile(r'(\d+) jobs currently running')
+HADOOP_JOB_LIST_NUM_RE = re.compile(br'(\d+) jobs currently running')
 # Fields: JobId, State, StartTime, UserName (hadoop), Priority, SchedulingInfo
 # We only care about JobId.
-HADOOP_JOB_LIST_INFO_RE = re.compile(r'(\S+)\s+\d+\s+\d+\s+hadoop\s+\w+\s+\w+')
+HADOOP_JOB_LIST_INFO_RE = re.compile(br'(\S+)\s+\d+\s+\d+\s+hadoop\s+\w+\s+\w+')
 
 
 log = logging.getLogger(__name__)
@@ -83,6 +84,8 @@ def ssh_run(ssh_bin, address, ec2_key_pair_file, cmd_args, stdin=b''):
     p = Popen(args, stdout=PIPE, stderr=PIPE, stdin=PIPE,
               universal_newlines=False)
     out = p.communicate(stdin)
+    assert(isinstance(out[0], six.binary_type))
+    assert(isinstance(out[1], six.binary_type))
     return out
 
 
@@ -219,7 +222,7 @@ def ssh_terminate_single_job(ssh_bin, address, ec2_key_pair_file):
     job_info_match = HADOOP_JOB_LIST_INFO_RE.match(job_list_lines[2])
     if not job_info_match:
         job_list_output_error()
-    job_id = job_info_match.group(1)
+    job_id = job_info_match.group(1).decode('utf-8')
 
     job_kill_out = check_output(*ssh_run(
         ssh_bin, address, ec2_key_pair_file,
