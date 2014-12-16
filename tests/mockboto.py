@@ -24,6 +24,7 @@ ad-hoc mock objects.
 from datetime import datetime
 from datetime import timedelta
 from six import iteritems, itervalues
+import six
 import hashlib
 
 try:
@@ -171,7 +172,7 @@ class MockBucket(object):
                               date_to_str=to_iso8601)
 
 
-class MockKey(object):
+class MockKey(six.Iterator):
     """Mock out boto.s3.Key"""
 
     def __init__(self, bucket=None, name=None, date_to_str=None):
@@ -229,7 +230,7 @@ class MockKey(object):
         self._pos += len(chunk)
         return chunk
 
-    def next(self):
+    def __next__(self):
         chunk = self.read(SIMULATED_BUFFER_SIZE)
         if chunk:
             return chunk

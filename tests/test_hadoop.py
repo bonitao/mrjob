@@ -18,6 +18,7 @@
 
 import getpass
 import os
+import io
 import pty
 from subprocess import CalledProcessError
 from subprocess import check_call
@@ -35,7 +36,7 @@ from mrjob.hadoop import find_hadoop_streaming_jar
 from mrjob.hadoop import fully_qualify_hdfs_path
 from mrjob.util import bash_wrap
 from mrjob.util import shlex_split
-from mrjob.portability import StringIO
+from mrjob.portability import to_bytes, StringIO
 
 from tests.mockhadoop import create_mock_hadoop_script
 from tests.mockhadoop import add_mock_hadoop_output
@@ -149,19 +150,20 @@ class HadoopJobRunnerEndToEndTestCase(MockHadoopTestCase):
         stdin = StringIO('foo\nbar\n')
 
         local_input_path = os.path.join(self.tmp_dir, 'input')
-        with open(local_input_path, 'w') as local_input_file:
-            local_input_file.write('bar\nqux\n')
+        with io.open(local_input_path, 'wb') as local_input_file:
+            local_input_file.write(b'bar\nqux\n')
 
         input_to_upload = os.path.join(self.tmp_dir, 'remote_input')
-        with open(input_to_upload, 'w') as input_to_upload_file:
-            input_to_upload_file.write('foo\n')
+        with open(input_to_upload, 'wb') as input_to_upload_file:
+            input_to_upload_file.write(b'foo\n')
         remote_input_path = 'hdfs:///data/foo'
         check_call([self.hadoop_bin,
                     'fs', '-put', input_to_upload, remote_input_path])
 
         # doesn't matter what the intermediate output is; just has to exist.
-        add_mock_hadoop_output([''])
-        add_mock_hadoop_output(['1\t"qux"\n2\t"bar"\n', '2\t"foo"\n5\tnull\n'])
+        add_mock_hadoop_output([b''])
+        add_mock_hadoop_output(
+            to_bytes(['1\t"qux"\n2\t"bar"\n', '2\t"foo"\n5\tnull\n']))
 
         mr_job = MRTwoStepJob(['-r', 'hadoop', '-v',
                                '--no-conf', '--hadoop-arg', '-libjar',
@@ -480,7 +482,7 @@ class JarStepTestCase(MockHadoopTestCase):
             ['-r', 'hadoop', '--jar', fake_jar, input1, input2])
         job.sandbox()
 
-        add_mock_hadoop_output([''])  # need this for streaming step
+        add_mock_hadoop_output([b''])  # need this for streaming step
 
         with job.make_runner() as runner:
             runner.run()

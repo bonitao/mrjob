@@ -30,7 +30,7 @@ from mrjob.portability import BytesIO
 log = logging.getLogger(__name__)
 
 # used by mkdir()
-HADOOP_FILE_EXISTS_RE = re.compile(r'.*File exists.*')
+HADOOP_FILE_EXISTS_RE = re.compile(br'.*File exists.*')
 
 # used by ls() and path_exists()
 _HADOOP_LS_NO_SUCH_FILE = re.compile(
@@ -119,11 +119,11 @@ class HadoopFilesystem(Filesystem):
 
         try:
             return sum(int(line.split()[1])
-                       for line in stdout.split('\n')
+                       for line in stdout.split(b'\n')
                        if line.strip())
         except (ValueError, TypeError, IndexError):
-            raise IOError(
-                'Unexpected output from hadoop fs -du: %r' % stdout)
+            raise IOError('Unexpected output from hadoop fs -du: %r' %
+                          stdout.decode('utf-8'))
 
     def ls(self, path_glob):
         components = urlparse(path_glob)

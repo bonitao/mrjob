@@ -17,6 +17,7 @@
 # don't add imports here that aren't part of the standard Python library,
 # since MRJobs need to run in Amazon's generic EMR environment
 
+import pudb
 from collections import defaultdict
 import contextlib
 from copy import deepcopy
@@ -73,6 +74,7 @@ def buffer_iterator_to_line_iterator(iterator):
         it will not, for better compatibility with file objects.
     """
     buf = b''
+    # pu.db
     for chunk in iterator:
         buf += chunk
 

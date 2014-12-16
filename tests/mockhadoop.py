@@ -37,6 +37,8 @@ from __future__ import print_function
 
 import datetime
 import glob
+import io
+import pudb
 import os
 import os.path
 import pipes
@@ -46,15 +48,16 @@ import sys
 
 from mrjob.parse import HADOOP_STREAMING_JAR_RE
 from mrjob.parse import urlparse
+from mrjob.portability import to_bytes
 
 
 def create_mock_hadoop_script(path):
     """Dump a wrapper script to the given file object that runs this
     python script."""
     # make this work even if $PATH or $PYTHONPATH changes
-    with open(path, 'w') as f:
-        f.write('#!/bin/sh\n')
-        f.write('%s %s "$@"\n' % (
+    with io.open(path, 'wt') as f:
+        f.write(u'#!/bin/sh\n')
+        f.write(u'%s %s "$@"\n' % (
             pipes.quote(sys.executable),
             pipes.quote(os.path.abspath(__file__))))
     os.chmod(path, stat.S_IREAD | stat.S_IEXEC)
@@ -66,7 +69,7 @@ def add_mock_hadoop_output(parts):
 
     Args:
     parts -- a list of the contents of parts files, which should be iterables
-        that return lines (e.g. lists, StringIOs).
+        that return bytestring lines (e.g. lists, BytesIOs).
 
     The environment variable MOCK_HADOOP_OUTPUT must be set.
     """
@@ -78,9 +81,9 @@ def add_mock_hadoop_output(parts):
 
     for i, part in enumerate(parts):
         part_path = os.path.join(output_dir, 'part-%05d' % i)
-        with open(part_path, 'w') as part_file:
-            for line in part:
-                part_file.write(line)
+        with io.open(part_path, 'wb') as part_file:
+            # Previous code was iterating per character
+            part_file.write(part)
 
 
 def get_mock_hadoop_output():
@@ -142,27 +145,32 @@ def main(stdin, stdout, stderr, argv, environ):
 
     # log what commands we ran
     if environ.get('MOCK_HADOOP_LOG'):
-        with open(environ['MOCK_HADOOP_LOG'], 'a') as cmd_log:
-            cmd_log.write(' '.join(pipes.quote(arg) for arg in argv[1:]))
-            cmd_log.write('\n')
+        with io.open(environ['MOCK_HADOOP_LOG'], 'at') as cmd_log:
+            cmd_log.write(u' '.join(pipes.quote(arg) for arg in argv[1:]))
+            cmd_log.write(u'\n')
             cmd_log.flush()
 
     if len(argv) < 2:
-        stderr.write('Usage: hadoop [--config confdir] COMMAND\n')
+        stderr.write(b'Usage: hadoop [--config confdir] COMMAND\n')
         return 1
 
     cmd = argv[1]
     cmd_args = argv[2:]
 
+    stdin = to_bytes(stdin)
+    stdout = to_bytes(stdout)
+    stderr = to_bytes(stderr)
+
+    error_msg_tpl = 'Could not find the main class: %s.  Program will exit.\n\n'
+    error_msg = (error_msg_tpl % cmd).encode('utf-8')
     return invoke_cmd(
-        stdout, stderr, environ, 'hadoop_', cmd, cmd_args,
-        'Could not find the main class: %s.  Program will exit.\n\n' % cmd, 1)
+        stdout, stderr, environ, 'hadoop_', cmd, cmd_args, error_msg, 1)
 
 
 def hadoop_fs(stdout, stderr, environ, *args):
     """Implements hadoop fs <args>"""
     if len(args) < 1:
-        stderr.write('Usage: java FsShell\n')
+        stderr.write(b'Usage: java FsShell\n')
         return -1
 
     cmd = args[0][1:]  # convert e.g. '-put' -> 'put'
@@ -170,14 +178,16 @@ def hadoop_fs(stdout, stderr, environ, *args):
 
     # this doesn't have to be a giant switch statement, but it's a
     # bit easier to understand this way. :)
+    error_msg_tpl = '%s: Unknown command\nUsage: java FsShell\n'
+    error_msg = (error_msg_tpl % cmd).encode('utf-8')
     return invoke_cmd(stdout, stderr, environ, 'hadoop_fs_', cmd, cmd_args,
-               '%s: Unknown command\nUsage: java FsShell\n' % cmd, -1)
+                error_msg, -1)
 
 
 def hadoop_fs_cat(stdout, stderr, environ, *args):
     """Implements hadoop fs -cat <src>"""
     if len(args) < 1:
-        stderr.write('Usage: java FsShell [-cat <src>]\n')
+        stderr.write(b'Usage: java FsShell [-cat <src>]\n')
         return -1
 
     failed = False
@@ -185,11 +195,12 @@ def hadoop_fs_cat(stdout, stderr, environ, *args):
         real_path_glob = hdfs_path_to_real_path(hdfs_path_glob, environ)
         paths = glob.glob(real_path_glob)
         if not paths:
-            stderr.write('cat: File does not exist: %s\n' % hdfs_path_glob)
+            stderr.write(b'cat: File does not exist: ' +
+                         hdfs_path_glob.encode('utf-8') + b'\n')
             failed = True
         else:
             for path in paths:
-                with open(path) as f:
+                with io.open(path, 'rb') as f:
                     for line in f:
                         stdout.write(line)
 
@@ -242,9 +253,8 @@ def hadoop_fs_lsr(stdout, stderr, environ, *args):
         max_size = 0
 
         if not real_paths:
-            print((
-                'lsr: Cannot access %s: No such file or directory.' %
-                hdfs_path_glob), file=stderr)
+            msg_tpl = 'lsr: Cannot access %s: No such file or directory.\n'
+            stderr.write((msg_tpl % hdfs_path_glob).encode('utf-8'))
             failed = True
         else:
             for real_path in real_paths:
@@ -260,7 +270,8 @@ def hadoop_fs_lsr(stdout, stderr, environ, *args):
                     paths.append((real_path, scheme, netloc, 0))
 
         for path in paths:
-            print(_hadoop_ls_line(*path + (max_size, environ)), file=stdout)
+            ls_line = _hadoop_ls_line(*path + (max_size, environ))
+            stdout.write(ls_line.encode('utf-8') + b'\n')
 
     if failed:
         return -1
@@ -285,16 +296,16 @@ def hadoop_fs_ls(stdout, stderr, environ, *args):
         max_size = 0
 
         if not real_paths:
-            print((
-                'ls: Cannot access %s: No such file or directory.' %
-                hdfs_path_glob), file=stderr)
+            msg_tpl = 'ls: Cannot access %s: No such file or directory.\n'
+            stderr.write((msg_tpl % hdfs_path_glob).encode('utf-8'))
             failed = True
         else:
             for real_path in real_paths:
                 paths.append((real_path, scheme, netloc, 0))
 
         for path in paths:
-            print(_hadoop_ls_line(*path + (max_size, environ)), file=stdout)
+            ls_line = _hadoop_ls_line(*path + (max_size, environ))
+            stdout.write(ls_line.encode('utf-8') + b'\n')
 
     if failed:
         return -1
@@ -305,7 +316,7 @@ def hadoop_fs_ls(stdout, stderr, environ, *args):
 def hadoop_fs_mkdir(stdout, stderr, environ, *args):
     """Implements hadoop fs -mkdir"""
     if len(args) < 1:
-        stderr.write('Usage: java FsShell [-mkdir <path>]\n')
+        stderr.write(b'Usage: java FsShell [-mkdir <path>]\n')
         return -1
 
     failed = False
@@ -320,8 +331,8 @@ def hadoop_fs_mkdir(stdout, stderr, environ, *args):
     for path in args:
         real_path = hdfs_path_to_real_path(path, environ)
         if os.path.exists(real_path):
-            stderr.write(
-                'mkdir: cannot create directory %s: File exists' % path)
+            error_msg_tpl = 'mkdir: cannot create directory %s: File exists'
+            stderr.write((error_msg_tpl % path).encode('utf-8'))
             # continue to make directories on failure
             failed = True
         else:
@@ -342,9 +353,8 @@ def hadoop_fs_dus(stdout, stderr, environ, *args):
         real_path_glob = hdfs_path_to_real_path(hdfs_path_glob, environ)
         real_paths = glob.glob(real_path_glob)
         if not real_paths:
-            print((
-                'lsr: Cannot access %s: No such file or directory.' %
-                hdfs_path_glob), file=stderr)
+            msg_tpl = 'lsr: Cannot access %s: No such file or directory.'
+            stderr.write((msg_tpl % hdfs_path_glob).encode('utf-8'))
             failed = True
         else:
             for real_path in real_paths:
@@ -356,7 +366,8 @@ def hadoop_fs_dus(stdout, stderr, environ, *args):
                                 os.path.join(dirpath, filename))
                 else:
                     total_size += os.path.getsize(real_path)
-                print("%s    %d" % (real_path, total_size), file=stdout)
+                stdout.write(("%s    %d\n" %
+                             (real_path, total_size)).encode('utf-8'))
 
     if failed:
         return -1
@@ -367,7 +378,7 @@ def hadoop_fs_dus(stdout, stderr, environ, *args):
 def hadoop_fs_put(stdout, stderr, environ, *args):
     """Implements hadoop fs -put"""
     if len(args) < 2:
-        stderr.write('Usage: java FsShell [-put <localsrc> ... <dst>]')
+        stderr.write(b'Usage: java FsShell [-put <localsrc> ... <dst>]')
         return -1
 
     srcs = args[:-1]
@@ -387,7 +398,7 @@ def hadoop_fs_put(stdout, stderr, environ, *args):
 def hadoop_fs_rmr(stdout, stderr, environ, *args):
     """Implements hadoop fs -rmr."""
     if len(args) < 1:
-        stderr.write('Usage: java FsShell [-rmr [-skipTrash] <src>]')
+        stderr.write(b'Usage: java FsShell [-rmr [-skipTrash] <src>]')
 
     if args[0] == '-skipTrash':
         args = args[1:]
@@ -400,8 +411,8 @@ def hadoop_fs_rmr(stdout, stderr, environ, *args):
         elif os.path.exists(real_path):
             os.remove(real_path)
         else:
-            stderr.write(
-                'rmr: cannot remove %s: No such file or directory.' % path)
+            error_msg_tpl = 'rmr: cannot remove %s: No such file or directory.'
+            stderr.write((error_msg_tpl % path).encode('utf-8'))
             failed = True
 
     if failed:
@@ -413,7 +424,7 @@ def hadoop_fs_rmr(stdout, stderr, environ, *args):
 def hadoop_fs_test(stdout, stderr, environ, *args):
     """Implements hadoop fs -test."""
     if len(args) < 1:
-        stderr.write('Usage: java FsShell [-test -[ezd] <src>]')
+        stderr.write(b'Usage: java FsShell [-test -[ezd] <src>]')
 
     if os.path.exists(hdfs_path_to_real_path(args[1], environ)):
         return 0
@@ -423,14 +434,14 @@ def hadoop_fs_test(stdout, stderr, environ, *args):
 
 def hadoop_jar(stdout, stderr, environ, *args):
     if len(args) < 1:
-        stderr.write('RunJar jarFile [mainClass] args...\n')
+        stderr.write(b'RunJar jarFile [mainClass] args...\n')
         return -1
 
     jar_path = args[0]
     if not os.path.exists(jar_path):
-        stderr.write(
-            'Exception in thread "main" java.io.IOException: Error opening job'
-            ' jar: %s\n' % jar_path)
+        error_msg_tpl = ('Exception in thread "main" java.io.IOException: ' +
+                         'Error opening job jar: %s\n')
+        stderr.write((error_msg_tpl % jar_path).encode('utf-8'))
         return -1
 
     # only simulate for streaming steps
@@ -443,7 +454,7 @@ def hadoop_jar(stdout, stderr, environ, *args):
 
         mock_output_dir = get_mock_hadoop_output()
         if mock_output_dir is None:
-            stderr.write('Job failed!')
+            stderr.write(b'Job failed!')
             return -1
 
         if os.path.isdir(real_output_dir):
@@ -452,8 +463,9 @@ def hadoop_jar(stdout, stderr, environ, *args):
         shutil.move(mock_output_dir, real_output_dir)
 
     now = datetime.datetime.now()
-    stderr.write(now.strftime('Running job: job_%Y%m%d%H%M_0001\n'))
-    stderr.write('Job succeeded!\n')
+    nowstr = now.strftime('Running job: job_%Y%m%d%H%M_0001\n')
+    stderr.write(nowstr.encode('utf-8'))
+    stderr.write(b'Job succeeded!\n')
     return 0
 
 
@@ -463,7 +475,7 @@ def hadoop_version(stdout, stderr, environ, *args):
 #  -r 911707
 # Compiled by chrisdo on Fri Feb 19 08:07:34 UTC 2010
 # """)
-    stderr.write("Hadoop " + environ['MOCK_HADOOP_VERSION'])
+    stderr.write(("Hadoop " + environ['MOCK_HADOOP_VERSION']).encode('utf-8'))
     return 0
 
 
