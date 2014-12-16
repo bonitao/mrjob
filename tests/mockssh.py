@@ -30,12 +30,15 @@ mockssh.
 
 from __future__ import print_function
 
+import io
 import os
 import pipes
 import posixpath
 import re
 import stat
 import sys
+
+from mrjob.portability import to_bytes
 
 
 def create_mock_ssh_script(path):
@@ -113,12 +116,15 @@ _SCP_RE = re.compile(r'^.*"cat > (?P<filename>.*?)".*$')
 
 def main(stdin, stdout, stderr, args, environ):
 
+    stdin = to_bytes(stdin)
+    stdout = to_bytes(stdout)
+    stderr = to_bytes(stderr)
     def slave_addresses():
         """Get the addresses for slaves based on :envvar:`MOCK_SSH_ROOTS`"""
         for kv_pair in environ['MOCK_SSH_ROOTS'].split(':'):
             m = _SLAVE_ADDR_RE.match(kv_pair)
             if m:
-                print(m.group('slave'), file=stdout)
+                print(m.group('slave').encode('utf-8'), file=stdout)
         return 0
 
     def receive_poor_mans_scp(host, args):
@@ -126,11 +132,11 @@ def main(stdin, stdout, stderr, args, environ):
         dest = _SCP_RE.match(args[0]).group('filename')
         try:
             path = os.path.join(path_for_host(host, environ), dest)
-            with open(path, 'w') as f:
+            with io.open(path, 'wb') as f:
                 f.writelines(stdin)
             return 0
         except IOError:
-            print('No such file or directory:', dest, file=stderr)
+            print(b'No such file or directory:', to_bytes(dest), file=stderr)
             return 1
 
 
@@ -144,16 +150,17 @@ def main(stdin, stdout, stderr, args, environ):
 
         prefix_length = len(path_for_host(host, environ))
         if not os.path.exists(local_dest):
-            print('No such file or directory:', local_dest, file=stderr)
+            stderr.write(b'No such file or directory:' +
+                         to_bytes(local_dest) + b'\n')
             return 1
         if not os.path.isdir(local_dest):
-            print(dest, file=stdout)
+            stdout.write(to_bytes(dest) + b'\n')
         for root, dirs, files in os.walk(local_dest):
             components = root.split(os.sep)
             new_root = posixpath.join(*components)
             for filename in files:
-                print((
-                    '/' + posixpath.join(new_root, filename)[prefix_length:]), file=stdout)
+                p = posixpath.join(new_root, filename)[prefix_length:]
+                stdout.write(b'/' + to_bytes(p) + b'\n')
         return 0
 
 
@@ -161,10 +168,10 @@ def main(stdin, stdout, stderr, args, environ):
         """Mock SSH behavior for :py:func:`~mrjob.ssh.ssh_cat()`"""
         local_dest = rel_posix_to_abs_local(host, args[1], environ)
         if not os.path.exists(local_dest):
-            print('No such file or directory:', local_dest, file=stderr)
+            stderr.write(b'No such file or directory: ' + to_bytes(local_dest))
             return 1
-        with open(local_dest, 'r') as f:
-            print(f.read(), end='', file=stdout)
+        with io.open(local_dest, 'rb') as f:
+            stdout.write(f.read())
             return 0
 
 
@@ -200,11 +207,11 @@ def main(stdin, stdout, stderr, args, environ):
             if not os.path.exists(
                 os.path.join(path_for_host(host, environ), slave_key_file)):
                 # This is word-for-word what SSH says.
-                print(('Warning: Identity file %s not accessible.'
-                                  ' No such file or directory.' %
-                                  slave_key_file), file=stderr)
+                stderr.write(b'Warning: Identity file ' +
+                             to_bytes(slave_key_file) + b' not accessible.' +
+                             b' No such file or directory.\n')
 
-                print('Permission denied (publickey).', file=stderr)
+                stderr.write(b'Permission denied (publickey).\n')
                 return 1
 
             while not remote_args[remote_arg_pos].startswith('hadoop@'):
@@ -216,8 +223,8 @@ def main(stdin, stdout, stderr, args, environ):
             return run(slave_host, remote_args[remote_arg_pos + 1:],
                        stdin, stdout, stderr, slave_key_file)
 
-        print(("Command line not recognized: %s" %
-                          ' '.join(remote_args)), file=stderr)
+        stderr.write(b"Command line not recognized: " +
+                     to_bytes(' '.join(remote_args)) + b'\n')
         return 1
 
     # Find where the user's commands begin
@@ -232,7 +239,7 @@ def main(stdin, stdout, stderr, args, environ):
     # verify existence of key pair file if necessary
     if environ.get('MOCK_SSH_VERIFY_KEY_FILE', 'false') == 'true' \
        and not os.path.exists(args[arg_pos]):
-        print('Warning: Identity file', end='', file=stderr)
+        stderr.write(b'Warning: Identity file')
         args[arg_pos], 'not accessible: No such file or directory.'
         return 1
 
@@ -249,4 +256,5 @@ def main(stdin, stdout, stderr, args, environ):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.stdin, sys.stdout, sys.stderr, sys.argv, os.environ))
+    sys.exit(main(sys.stdin, sys.stdout, sys.stderr,
+                  sys.argv, os.environ))

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import StringIO
+from six import BytesIO, StringIO
 
 from tests.sandbox import SandboxedTestCase
 
@@ -37,15 +37,23 @@ class MockSubprocessTestCase(SandboxedTestCase):
 
         class MockPopen(object):
 
-            def __init__(self, args, stdin=None, stdout=None, stderr=None):
+            def __init__(self, args, stdin=None, stdout=None, stderr=None,
+                         universal_newlines=False):
                 self.args = args
-                self.stdin = stdin if stdin is not None else StringIO()
+                self.universal_newlines = universal_newlines
+                self.stdin = stdin if stdin is not None else BytesIO()
+                if universal_newlines and stdin is None:
+                    self.stdin = StringIO
 
                 # discard incoming stdout/stderr objects
-                self.stdout = StringIO()
-                self.stderr = StringIO()
+                self.stdout = BytesIO()
+                self.stderr = BytesIO()
+                if universal_newlines:
+                    self.stdout = StringIO()
+                    self.stderr = StringIO()
 
                 if stdin is None:
+                    # Is this code path reachable?
                     self._run()
 
             def _run(self):
@@ -63,8 +71,12 @@ class MockSubprocessTestCase(SandboxedTestCase):
                 outer.io_log.append((self.stdout_result, self.stderr_result))
 
                 # expose the results as readable file objects
-                self.stdout = StringIO(self.stdout_result)
-                self.stderr = StringIO(self.stderr_result)
+                if self.universal_newlines:
+                    self.stdout = StringIO(self.stdout_result)
+                    self.stderr = StringIO(self.stderr_result)
+                else:
+                    self.stdout = BytesIO(self.stdout_result)
+                    self.stderr = BytesIO(self.stderr_result)
 
             def communicate(self, stdin=None):
                 if stdin is not None:

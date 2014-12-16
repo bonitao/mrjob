@@ -42,7 +42,7 @@ class HadoopFSTestCase(MockSubprocessTestCase):
                 'contrib',
                 'streaming',
                 'hadoop-0.X.Y-streaming.jar'),
-            'i are java bytecode',
+            b'i are java bytecode',
         )
 
         self.env['MOCK_HDFS_ROOT'] = self.makedirs('mock_hdfs_root')
@@ -50,7 +50,7 @@ class HadoopFSTestCase(MockSubprocessTestCase):
         self.env['USER'] = 'mrjob_tests'
         # don't set MOCK_HADOOP_LOG, we get command history other ways
 
-    def make_mock_file(self, name, contents='contents'):
+    def make_mock_file(self, name, contents=b'contents'):
         return self.makefile(os.path.join('mock_hdfs_root', name), contents)
 
     def test_ls_empty(self):
@@ -74,8 +74,8 @@ class HadoopFSTestCase(MockSubprocessTestCase):
 
     def test_ls_s3n(self):
         # hadoop fs -lsr doesn't have user and group info when reading from s3
-        self.make_mock_file('f', 'foo')
-        self.make_mock_file('f3 win', 'foo' * 10)
+        self.make_mock_file('f', b'foo')
+        self.make_mock_file('f3 win', b'foo' * 10)
         self.assertItemsEqual(list(self.fs.ls('s3n://bucket/')),
                               ['s3n://bucket/f', 's3n://bucket/f3 win'])
 
@@ -90,7 +90,7 @@ class HadoopFSTestCase(MockSubprocessTestCase):
                               ['hdfs:///foo  bar'])
 
     def test_cat_uncompressed(self):
-        self.make_mock_file('data/foo', 'foo\nfoo\n')
+        self.make_mock_file('data/foo', b'foo\nfoo\n')
 
         remote_path = self.fs.path_join('hdfs:///data', 'foo')
 
@@ -98,7 +98,7 @@ class HadoopFSTestCase(MockSubprocessTestCase):
                          ['foo\n', 'foo\n'])
 
     def test_cat_bz2(self):
-        self.make_mock_file('data/foo.bz2', bz2.compress('foo\n' * 1000))
+        self.make_mock_file('data/foo.bz2', bz2.compress(b'foo\n' * 1000))
 
         remote_path = self.fs.path_join('hdfs:///data', 'foo.bz2')
 
@@ -106,7 +106,7 @@ class HadoopFSTestCase(MockSubprocessTestCase):
                          ['foo\n'] * 1000)
 
     def test_cat_gz(self):
-        self.make_mock_file('data/foo.gz', gzip_compress('foo\n' * 10000))
+        self.make_mock_file('data/foo.gz', gzip_compress(b'foo\n' * 10000))
 
         remote_path = self.fs.path_join('hdfs:///data', 'foo.gz')
 
@@ -114,9 +114,9 @@ class HadoopFSTestCase(MockSubprocessTestCase):
                          ['foo\n'] * 10000)
 
     def test_du(self):
-        self.make_mock_file('data1', 'abcd')
-        self.make_mock_file('more/data2', 'defg')
-        self.make_mock_file('more/data3', 'hijk')
+        self.make_mock_file('data1', b'abcd')
+        self.make_mock_file('more/data2', b'defg')
+        self.make_mock_file('more/data3', b'hijk')
 
         self.assertEqual(self.fs.du('hdfs:///'), 12)
         self.assertEqual(self.fs.du('hdfs:///data1'), 4)

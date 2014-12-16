@@ -14,18 +14,13 @@
 import logging
 import posixpath
 
-try:
-    from six.moves import StringIO
-    StringIO  # quiet "redefinition of unused ..." warning from pyflakes
-except ImportError:
-    from six.moves import StringIO
-
 from mrjob.fs.base import Filesystem
 from mrjob.ssh import ssh_cat
 from mrjob.ssh import ssh_ls
 from mrjob.ssh import SSH_PREFIX
 from mrjob.ssh import SSH_URI_RE
 from mrjob.util import read_file
+from mrjob.portability import BytesIO
 
 
 log = logging.getLogger(__name__)
@@ -86,8 +81,8 @@ class SSHFilesystem(Filesystem):
 
         for line in output:
             # skip directories, we only want to return downloadable files
-            if line and not line.endswith('/'):
-                yield SSH_PREFIX + addr + line
+            if line and not line.endswith(b'/'):
+                yield SSH_PREFIX + addr + line.decode('utf-8')
 
     def md5sum(self, path, s3_conn=None):
         raise IOError()  # not implemented
@@ -104,7 +99,7 @@ class SSHFilesystem(Filesystem):
             ssh_match.group('filesystem_path'),
             self.ssh_key_name,
         )
-        return read_file(filename, fileobj=StringIO(output))
+        return read_file(filename, fileobj=BytesIO(output))
 
     def mkdir(self, dest):
         raise IOError()  # not implemented

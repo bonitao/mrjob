@@ -56,17 +56,17 @@ def _ssh_args(ssh_bin, address, ec2_key_pair_file):
 
 def check_output(out, err):
     if err:
-        if (('No such file or directory' in err)
-                or ('Warning: Permanently added' not in err)):
+        if ((b'No such file or directory' in err)
+                or (b'Warning: Permanently added' not in err)):
             raise IOError(err)
 
-    if 'Permission denied' in out:
+    if b'Permission denied' in out:
         raise IOError(out)
 
     return out
 
 
-def ssh_run(ssh_bin, address, ec2_key_pair_file, cmd_args, stdin=''):
+def ssh_run(ssh_bin, address, ec2_key_pair_file, cmd_args, stdin=b''):
     """Shortcut to call ssh on a Hadoop node via ``subprocess``.
 
     :param ssh_bin: Path to ``ssh`` binary
@@ -80,8 +80,10 @@ def ssh_run(ssh_bin, address, ec2_key_pair_file, cmd_args, stdin=''):
     """
     args = _ssh_args(ssh_bin, address, ec2_key_pair_file) + list(cmd_args)
     log.debug('Run SSH command: %s' % args)
-    p = Popen(args, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-    return p.communicate(stdin)
+    p = Popen(args, stdout=PIPE, stderr=PIPE, stdin=PIPE,
+              universal_newlines=False)
+    out = p.communicate(stdin)
+    return out
 
 
 def ssh_run_with_recursion(ssh_bin, address, ec2_key_pair_file, keyfile,
@@ -179,9 +181,9 @@ def ssh_ls(ssh_bin, address, ec2_key_pair_file, path, keyfile=None):
     out = check_output(*ssh_run_with_recursion(
         ssh_bin, address, ec2_key_pair_file, keyfile,
         ['find', '-L', path, '-type', 'f']))
-    if 'No such file or directory' in out:
+    if b'No such file or directory' in out:
         raise IOError("No such file or directory: %s" % path)
-    return out.split('\n')
+    return out.split(b'\n')
 
 
 def ssh_terminate_single_job(ssh_bin, address, ec2_key_pair_file):

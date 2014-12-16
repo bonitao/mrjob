@@ -138,7 +138,7 @@ class MockHadoopTestCase(SandboxedTestCase):
         os.environ['MOCK_HADOOP_OUTPUT'] = mock_output_dir
 
         # set up cmd log
-        mock_log_path = self.makefile('mock_hadoop_logs', '')
+        mock_log_path = self.makefile('mock_hadoop_logs', b'')
         os.environ['MOCK_HADOOP_LOG'] = mock_log_path
 
 

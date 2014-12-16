@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import bz2
 import os
 import shutil
@@ -27,7 +28,7 @@ class SSHFSTestCase(MockSubprocessTestCase):
 
     def setUp(self):
         super(SSHFSTestCase, self).setUp()
-        self.ec2_key_pair_file = self.makefile('key.pem', 'i am an ssh key')
+        self.ec2_key_pair_file = self.makefile('key.pem', b'i am an ssh key')
         self.ssh_key_name = 'key_name.pem'
         self.fs = SSHFilesystem(['ssh'], self.ec2_key_pair_file,
                                 self.ssh_key_name)
@@ -68,71 +69,71 @@ class SSHFSTestCase(MockSubprocessTestCase):
         self.assertEqual(list(self.fs.ls('ssh://testmaster/')), [])
 
     def test_ls_basic(self):
-        self.make_master_file('f', 'contents')
+        self.make_master_file('f', b'contents')
         self.assertEqual(list(self.fs.ls('ssh://testmaster/')),
                          ['ssh://testmaster/f'])
 
     def test_ls_basic_2(self):
-        self.make_master_file('f', 'contents')
-        self.make_master_file('f2', 'contents')
+        self.make_master_file('f', b'contents')
+        self.make_master_file('f2', b'contents')
         self.assertItemsEqual(list(self.fs.ls('ssh://testmaster/')),
                               ['ssh://testmaster/f', 'ssh://testmaster/f2'])
 
     def test_ls_recurse(self):
-        self.make_master_file('f', 'contents')
-        self.make_master_file('d/f2', 'contents')
+        self.make_master_file('f', b'contents')
+        self.make_master_file('d/f2', b'contents')
         self.assertItemsEqual(list(self.fs.ls('ssh://testmaster/')),
                               ['ssh://testmaster/f', 'ssh://testmaster/d/f2'])
 
     def test_cat_uncompressed(self):
-        self.make_master_file(os.path.join('data', 'foo'), 'foo\nfoo\n')
+        self.make_master_file(os.path.join('data', 'foo'), b'foo\nfoo\n')
         remote_path = self.fs.path_join('ssh://testmaster/data', 'foo')
 
         self.assertEqual(list(self.fs._cat_file(remote_path)),
-                         ['foo\n', 'foo\n'])
+                         [b'foo\n', b'foo\n'])
 
     def test_cat_bz2(self):
         self.make_master_file(os.path.join('data', 'foo.bz2'),
-                              bz2.compress('foo\n' * 1000))
+                              bz2.compress(b'foo\n' * 1000))
         remote_path = self.fs.path_join('ssh://testmaster/data', 'foo.bz2')
 
         self.assertEqual(list(self.fs._cat_file(remote_path)),
-                         ['foo\n'] * 1000)
+                         [b'foo\n'] * 1000)
 
     def test_cat_gz(self):
         self.make_master_file(os.path.join('data', 'foo.gz'),
-                              gzip_compress('foo\n' * 10000))
+                              gzip_compress(b'foo\n' * 10000))
         remote_path = self.fs.path_join('ssh://testmaster/data', 'foo.gz')
 
         self.assertEqual(list(self.fs._cat_file(remote_path)),
-                         ['foo\n'] * 10000)
+                         [b'foo\n'] * 10000)
 
     def test_slave_cat(self):
         self.add_slave()
-        self.make_slave_file(1, 'f', 'foo\nfoo\n')
+        self.make_slave_file(1, 'f', b'foo\nfoo\n')
         remote_path = 'ssh://testmaster!testslave1/f'
 
         # it is not SSHFilesystem's responsibility to copy the key.
         self.assertRaises(IOError, self.fs._cat_file, remote_path)
 
-        self.make_master_file(self.ssh_key_name, 'key')
+        self.make_master_file(self.ssh_key_name, b'key')
         self.assertEqual(list(self.fs._cat_file(remote_path)),
-                         ['foo\n', 'foo\n'])
+                         [b'foo\n', b'foo\n'])
 
     def test_slave_ls(self):
         self.add_slave()
-        self.make_slave_file(1, 'f', 'foo\nfoo\n')
+        self.make_slave_file(1, 'f', b'foo\nfoo\n')
         remote_path = 'ssh://testmaster!testslave1/'
 
         self.assertRaises(IOError, list, self.fs.ls(remote_path))
 
         # it is not SSHFilesystem's responsibility to copy the key.
-        self.make_master_file(self.ssh_key_name, 'key')
+        self.make_master_file(self.ssh_key_name, b'key')
         self.assertEqual(list(self.fs.ls(remote_path)),
                          ['ssh://testmaster!testslave1/f'])
 
     def test_du(self):
-        self.make_master_file('f', 'contents')
+        self.make_master_file('f', b'contents')
         # not implemented
         self.assertRaises(IOError, self.fs.du, 'ssh://testmaster/f')
 
@@ -145,12 +146,12 @@ class SSHFSTestCase(MockSubprocessTestCase):
         self.assertEqual(self.fs.path_exists(path), False)
 
     def test_path_exists_yes(self):
-        self.make_master_file('f', 'contents')
+        self.make_master_file('f', b'contents')
         path = 'ssh://testmaster/f'
         self.assertEqual(self.fs.path_exists(path), True)
 
     def test_rm(self):
-        self.make_master_file('f', 'contents')
+        self.make_master_file('f', b'contents')
         # not implemented
         self.assertRaises(IOError, self.fs.rm, 'ssh://testmaster/f')
 

@@ -24,7 +24,7 @@ from mrjob.parse import is_uri
 from mrjob.parse import urlparse
 from mrjob.util import cmd_line
 from mrjob.util import read_file
-from mrjob.portability import BytesIO, to_bytes
+from mrjob.portability import BytesIO
 
 
 log = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ class HadoopFilesystem(Filesystem):
         def cleanup():
             # there shouldn't be any stderr
             for line in cat_proc.stderr:
-                log.error('STDERR: ' + line)
+                log.error('STDERR: ' + line.decode('utf-8'))
 
             returncode = cat_proc.wait()
 

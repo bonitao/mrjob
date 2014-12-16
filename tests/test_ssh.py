@@ -65,10 +65,12 @@ class HadoopJobKillTestCase(unittest.TestCase):
             ssh.ssh_terminate_single_job(['ssh_bin'], 'address', 'key.pem')
             self.assertEqual(m.call_args_list[0],
                              call(self.EXPECTED_LIST_CALL,
-                                  stdin=PIPE, stdout=PIPE, stderr=PIPE))
+                                  stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                                  universal_newlines=False))
             self.assertEqual(m.call_args_list[1],
                              call(self.EXPECTED_KILL_CALL,
-                                  stdin=PIPE, stdout=PIPE, stderr=PIPE))
+                                  stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                                  universal_newlines=False))
 
     def test_too_many_jobs_on_the_dance_floor(self):
 

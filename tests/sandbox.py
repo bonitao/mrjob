@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import io
 import six
 from tempfile import mkdtemp
 from shutil import rmtree
@@ -105,7 +106,7 @@ class SandboxedTestCase(EmptyMrjobConfTestCase):
     def makefile(self, path, contents):
         self.makedirs(os.path.split(path)[0])
         abs_path = os.path.join(self.tmp_dir, path)
-        with open(abs_path, 'w') as f:
+        with io.open(abs_path, 'wb') as f:
             f.write(contents)
         return abs_path
 
