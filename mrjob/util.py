@@ -6,6 +6,7 @@
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 #
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +18,7 @@
 # don't add imports here that aren't part of the standard Python library,
 # since MRJobs need to run in Amazon's generic EMR environment
 
+import io
 import pudb
 from collections import defaultdict
 import contextlib
@@ -36,7 +38,7 @@ import zlib
 from six import iteritems
 from six.moves import xrange
 
-from mrjob.portability import to_bytes
+from mrjob.portability import to_bytes, to_text
 
 try:
     import bz2
@@ -181,6 +183,8 @@ def log_to_stream(name=None, stream=None, format=None, level=None,
     if format is None:
         format = '%(message)s'
 
+    # StreamHandler does not know how to use binary streams
+    stream = to_text(stream)
     if stream is None:
         stream = sys.stderr
 
@@ -427,7 +431,7 @@ def read_file(path, fileobj=None, yields_lines=True, cleanup=None):
     try:
         # open path if we need to
         if fileobj is None:
-            f = open(path, 'rb')
+            f = io.open(path, 'rb')
         else:
             f = fileobj
 

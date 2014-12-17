@@ -16,7 +16,7 @@
 """Test the idle job flow terminator"""
 
 
-from StringIO import StringIO
+from mrjob.portability import StringIO
 from datetime import datetime
 from datetime import timedelta
 import sys

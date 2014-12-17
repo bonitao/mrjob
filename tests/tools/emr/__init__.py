@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from StringIO import StringIO
+from six import StringIO
 import sys
 
 from mrjob.emr import EMRJobRunner

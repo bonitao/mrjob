@@ -40,6 +40,7 @@ import logging
 from optparse import OptionParser
 
 from six import iteritems
+from six.moves import xrange
 from mrjob.emr import EMRJobRunner
 from mrjob.emr import describe_all_job_flows
 from mrjob.job import MRJob

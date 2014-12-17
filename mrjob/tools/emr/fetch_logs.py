@@ -46,6 +46,7 @@ from __future__ import print_function
 from optparse import OptionError
 from optparse import OptionParser
 import sys
+from six.moves import xrange
 
 from mrjob.emr import EMRJobRunner
 from mrjob.emr import LogFetchError

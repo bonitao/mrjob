@@ -54,7 +54,7 @@ class _KeyCachingProtocol(object):
     def read(self, line):
         """Decode a line of input.
 
-        :type line: str
+        :type line: bytes
         :param line: A line of raw input to the job, without trailing newline.
 
         :return: A tuple of ``(key, value)``."""
@@ -73,7 +73,7 @@ class _KeyCachingProtocol(object):
         :param key: A key (of any type) yielded by a mapper/reducer
         :param value: A value (of any type) yielded by a mapper/reducer
 
-        :rtype: str
+        :rtype:  bytes
         :return: A line, without trailing newline."""
         return b'\t'.join((self._dumps(key), self._dumps(value)))
 

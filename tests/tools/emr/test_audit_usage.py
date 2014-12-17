@@ -15,10 +15,11 @@
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from StringIO import StringIO
+from six.moves import xrange
 import sys
 
 import boto.emr.connection
+from mrjob.portability import StringIO
 from mrjob.tools.emr.audit_usage import job_flow_to_full_summary
 from mrjob.tools.emr.audit_usage import subdivide_interval_by_date
 from mrjob.tools.emr.audit_usage import subdivide_interval_by_hour

@@ -23,6 +23,7 @@ from mrjob.parse import find_interesting_hadoop_streaming_error
 from mrjob.parse import find_python_traceback
 from mrjob.parse import find_timeout_error
 from mrjob.parse import parse_hadoop_counters_from_line
+from mrjob.portability import to_text, to_bytes
 
 
 log = logging.getLogger(__name__)
@@ -137,8 +138,8 @@ def _parse_simple_logs(fs, logs, parse_func):
         lines = _parsed_error(fs, path, parse_func)
         if lines:
             return {
-                'lines': lines,
-                'log_file_uri': path,
+                'lines': to_bytes(lines),
+                'log_file_uri': to_text(path),
                 'input_uri': None,
             }
 
@@ -169,9 +170,9 @@ def _parse_task_attempts(fs, logs):
             else:
                 input_uri = None
             return {
-                'lines': lines,
-                'log_file_uri': path,
-                'input_uri': input_uri,
+                'lines': to_bytes(lines),
+                'log_file_uri': to_text(path),
+                'input_uri': to_text(input_uri),
             }
 
 

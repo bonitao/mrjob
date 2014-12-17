@@ -19,6 +19,7 @@ process. Useful for debugging."""
 __author__ = 'Matthew Tai <mtai@adku.com>'
 
 import logging
+import io
 import os
 from six import BytesIO
 
@@ -144,7 +145,7 @@ class InlineMRJobRunner(SimMRJobRunner):
         if has_combiner:
             child_stdout = BytesIO()
         else:
-            child_stdout = open(output_path, 'wb')
+            child_stdout = io.open(output_path, 'wb')
 
         with save_current_environment():
             with save_cwd():
