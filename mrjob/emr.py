@@ -26,6 +26,7 @@ import signal
 import socket
 import time
 import six.moves.urllib_request
+from six.moves import xrange
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta

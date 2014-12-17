@@ -74,7 +74,6 @@ def buffer_iterator_to_line_iterator(iterator):
         it will not, for better compatibility with file objects.
     """
     buf = b''
-    # pu.db
     for chunk in iterator:
         buf += chunk
 
@@ -150,7 +149,7 @@ def file_ext(path):
 def hash_object(obj):
     """Generate a hash (currently md5) of the ``repr`` of the object"""
     m = hashlib.md5()
-    m.update(repr(obj))
+    m.update(to_bytes(repr(obj)))
     return m.hexdigest()
 
 

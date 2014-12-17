@@ -210,12 +210,12 @@ def best_error_from_logs(fs, task_attempts, steps, jobs):
 
 def _hadoop_streaming_error_wrapper(lines):
     msg = find_interesting_hadoop_streaming_error(lines)
-    return [msg + '\n'] if msg else None
+    return [msg + b'\n'] if msg else None
 
 
 def _timeout_error_wrapper(lines):
     n = find_timeout_error(lines)
-    return ['Task timeout after %d seconds\n' % n] if n else None
+    return [b'Task timeout after %d seconds\n' % n] if n else None
 
 
 def scan_for_counters_in_files(log_file_uris, runner, hadoop_version):

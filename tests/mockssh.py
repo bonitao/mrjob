@@ -75,7 +75,7 @@ def mock_ssh_file(host, path, contents):
     if not os.path.exists(basename):
         os.makedirs(basename)
 
-    with open(path, 'w') as f:
+    with io.open(path, 'wb') as f:
         f.write(contents)
     return path
 
@@ -124,7 +124,7 @@ def main(stdin, stdout, stderr, args, environ):
         for kv_pair in environ['MOCK_SSH_ROOTS'].split(':'):
             m = _SLAVE_ADDR_RE.match(kv_pair)
             if m:
-                print(m.group('slave').encode('utf-8'), file=stdout)
+                stdout.write(m.group('slave').encode('utf-8') + b'\n')
         return 0
 
     def receive_poor_mans_scp(host, args):
@@ -136,7 +136,7 @@ def main(stdin, stdout, stderr, args, environ):
                 f.writelines(stdin)
             return 0
         except IOError:
-            print(b'No such file or directory:', to_bytes(dest), file=stderr)
+            stderr.write(b'No such file or directory:' + to_bytes(dest) + b'\n')
             return 1
 
 

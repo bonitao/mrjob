@@ -14,6 +14,7 @@
 """Wrappers for gracefully retrying on error."""
 import logging
 import time
+from six.moves import xrange
 from functools import wraps
 
 log = logging.getLogger(__name__)

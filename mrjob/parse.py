@@ -180,7 +180,7 @@ def counter_unescape(escaped_string):
     :param escaped_string: string from a counter log line
     :type escaped_string: str
     """
-    escaped_string = escaped_string.encode('utf-8').decode('unicode_escape')
+    escaped_string = to_bytes(escaped_string).decode('unicode_escape')
     escaped_string = _HADOOP_0_20_ESCAPED_CHARS_RE.sub(r'\1', escaped_string)
     return escaped_string
 
@@ -260,12 +260,12 @@ def find_hadoop_java_stack_trace(lines):
     (We omit the "Error running child" line from the results)
     """
     for line in lines:
-        if line.rstrip('\r\n').endswith("Error running child"):
+        if line.rstrip(b'\r\n').endswith(b"Error running child"):
             st_lines = []
             for line in lines:
                 st_lines.append(line)
                 for line in lines:
-                    if not line.startswith('        at '):
+                    if not line.startswith(b'        at '):
                         break
                     st_lines.append(line)
                 return st_lines
@@ -273,7 +273,7 @@ def find_hadoop_java_stack_trace(lines):
         return None
 
 
-_OPENING_FOR_READING_RE = re.compile("^.*: Opening '(.*)' for reading$")
+_OPENING_FOR_READING_RE = re.compile(br"^.*: Opening '(.*)' for reading$")
 
 
 def find_input_uri_for_mapper(lines):
@@ -296,8 +296,8 @@ def find_input_uri_for_mapper(lines):
 
 
 _HADOOP_STREAMING_ERROR_RE = re.compile(
-    r'^.*ERROR org\.apache\.hadoop\.streaming\.StreamJob \(main\): (.*)$')
-_HADOOP_STREAMING_ERROR_RE_2 = re.compile(r'^(.*does not exist.*)$')
+    br'^.*ERROR org\.apache\.hadoop\.streaming\.StreamJob \(main\): (.*)$')
+_HADOOP_STREAMING_ERROR_RE_2 = re.compile(br'^(.*does not exist.*)$')
 
 
 def find_interesting_hadoop_streaming_error(lines):
@@ -454,8 +454,8 @@ def parse_mr_job_stderr(stderr, counters=None):
 # We just want to pull out the counter string, which varies between
 # Hadoop versions.
 _KV_EXPR = r'\s+\w+=".*?"'  # this matches KEY="VALUE"
-_COUNTER_LINE_EXPR = r'^.*?JOBID=".*?_%s".*?\bCOUNTERS="%s".*?$' % \
-    ('(?P<step_num>\d+)', r'(?P<counters>.*?)')
+_COUNTER_LINE_EXPR = to_bytes(r'^.*?JOBID=".*?_%s".*?\bCOUNTERS="%s".*?$' % \
+    ('(?P<step_num>\d+)', r'(?P<counters>.*?)'))
 _COUNTER_LINE_RE = re.compile(_COUNTER_LINE_EXPR)
 
 # 0.18-specific
@@ -469,9 +469,10 @@ _COUNTER_RE_0_18 = re.compile(_COUNTER_EXPR_0_18)
 # capture one group including sub-counters
 # these look like: {(gid)(gname)[...][...][...]...}
 _COUNTER_LIST_EXPR = r'(?P<counter_list_str>\[.*?\])'
-_GROUP_RE_0_20 = re.compile(r'{\(%s\)\(%s\)%s}' % (r'(?P<group_id>.*?)',
-                                                   r'(?P<group_name>.*?)',
-                                                   _COUNTER_LIST_EXPR))
+_GROUP_RE_0_20 = re.compile(
+     to_bytes(r'{\(%s\)\(%s\)%s}' % (r'(?P<group_id>.*?)',
+             r'(?P<group_name>.*?)',
+             _COUNTER_LIST_EXPR)))
 
 # capture a single counter from a group
 # this is what the ... is in _COUNTER_LIST_EXPR (incl. the brackets).
@@ -479,7 +480,7 @@ _GROUP_RE_0_20 = re.compile(r'{\(%s\)\(%s\)%s}' % (r'(?P<group_id>.*?)',
 _COUNTER_0_20_EXPR = r'\[\(%s\)\(%s\)\(%s\)\]' % (r'(?P<counter_id>.*?)',
                                                   r'(?P<counter_name>.*?)',
                                                   r'(?P<counter_value>\d+)')
-_COUNTER_RE_0_20 = re.compile(_COUNTER_0_20_EXPR)
+_COUNTER_RE_0_20 = re.compile(to_bytes(_COUNTER_0_20_EXPR))
 
 
 def _parse_counters_0_18(counter_string):

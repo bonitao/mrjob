@@ -23,7 +23,7 @@ ad-hoc mock objects.
 """
 from datetime import datetime
 from datetime import timedelta
-from six import iteritems, itervalues
+from six import iteritems, itervalues, advance_iterator
 import six
 import hashlib
 
@@ -691,7 +691,7 @@ class MockEmrConnection(object):
 
         if self.simulation_iterator:
             try:
-                self.simulation_iterator.next()
+                advance_iterator(self.simulation_iterator)
             except StopIteration:
                 raise AssertionError(
                     'Simulated progress too many times; bailing out')

@@ -147,7 +147,7 @@ def ssh_slave_addresses(ssh_bin, master_address, ec2_key_pair_file):
     args = ['bash -c "%s"' % cmd]
     ips = check_output(*ssh_run(ssh_bin, master_address, ec2_key_pair_file,
                                 args))
-    return [ip for ip in ips.split('\n') if ip]
+    return [ip.decode('utf-8') for ip in ips.split(b'\n') if ip]
 
 
 def ssh_cat(ssh_bin, address, ec2_key_pair_file, path, keyfile=None):

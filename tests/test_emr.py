@@ -23,6 +23,7 @@ from datetime import timedelta
 import getpass
 import itertools
 import logging
+import io
 import os
 import os.path
 import posixpath
@@ -31,6 +32,7 @@ import tempfile
 import time
 
 from six import iteritems, itervalues
+from six.moves import xrange
 from mock import patch
 from mock import Mock
 
@@ -57,7 +59,7 @@ from mrjob.ssh import SSH_PREFIX
 from mrjob.util import bash_wrap
 from mrjob.util import log_to_stream
 from mrjob.util import tar_and_gzip
-from mrjob.portability import StringIO
+from mrjob.portability import StringIO, BytesIO
 
 from tests.mockboto import DEFAULT_MAX_JOB_FLOWS_RETURNED
 from tests.mockboto import MockEmrConnection
@@ -250,15 +252,15 @@ class EMRJobRunnerEndToEndTestCase(MockEMRAndS3TestCase):
         stdin = StringIO('foo\nbar\n')
 
         local_input_path = os.path.join(self.tmp_dir, 'input')
-        with open(local_input_path, 'w') as local_input_file:
-            local_input_file.write('bar\nqux\n')
+        with io.open(local_input_path, 'wb') as local_input_file:
+            local_input_file.write(b'bar\nqux\n')
 
         remote_input_path = 's3://walrus/data/foo'
-        self.add_mock_s3_data({'walrus': {'data/foo': 'foo\n'}})
+        self.add_mock_s3_data({'walrus': {'data/foo': b'foo\n'}})
 
         # setup fake output
         self.mock_emr_output = {('j-MOCKJOBFLOW0', 1): [
-            '1\t"qux"\n2\t"bar"\n', '2\t"foo"\n5\tnull\n']}
+            b'1\t"qux"\n2\t"bar"\n', b'2\t"foo"\n5\tnull\n']}
 
         mr_job = MRHadoopFormatJob(['-r', 'emr', '-v',
                                     '-', local_input_path, remote_input_path,
@@ -378,7 +380,7 @@ class EMRJobRunnerEndToEndTestCase(MockEMRAndS3TestCase):
         self.assertEqual(job_flow.state, 'TERMINATED')
 
     def _test_remote_scratch_cleanup(self, mode, scratch_len, log_len):
-        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': '1\n'}})
+        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': b'1\n'}})
         stdin = StringIO('foo\nbar\n')
 
         mr_job = MRTwoStepJob(['-r', 'emr', '-v',
@@ -432,7 +434,7 @@ class EMRJobRunnerEndToEndTestCase(MockEMRAndS3TestCase):
                           'GARBAGE', 0, 0)
 
     def test_args_version_018(self):
-        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': '1\n'}})
+        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': b'1\n'}})
         # read from STDIN, a local file, and a remote file
         stdin = StringIO('foo\nbar\n')
 
@@ -449,7 +451,7 @@ class EMRJobRunnerEndToEndTestCase(MockEMRAndS3TestCase):
             self.assertNotIn('-combiner', step_args)
 
     def test_args_version_020_205(self):
-        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': '1\n'}})
+        self.add_mock_s3_data({'walrus': {'logs/j-MOCKJOBFLOW0/1': b'1\n'}})
         # read from STDIN, a local file, and a remote file
         stdin = StringIO('foo\nbar\n')
 
@@ -526,7 +528,7 @@ class ExistingJobFlowTestCase(MockEMRAndS3TestCase):
 
         stdin = StringIO('foo\nbar\n')
         self.mock_emr_output = {(emr_job_flow_id, 1): [
-            '1\t"bar"\n1\t"foo"\n2\tnull\n']}
+            b'1\t"bar"\n1\t"foo"\n2\tnull\n']}
 
         mr_job = MRTwoStepJob(['-r', 'emr', '-v',
                                '--emr-job-flow-id', emr_job_flow_id])
@@ -1253,34 +1255,34 @@ BUCKET_URI = 's3://' + BUCKET + '/'
 LOG_DIR = 'j-JOBFLOWID/'
 
 GARBAGE = \
-"""GarbageGarbageGarbage
+b"""GarbageGarbageGarbage
 """
 
-TRACEBACK_START = 'Traceback (most recent call last):\n'
+TRACEBACK_START = b'Traceback (most recent call last):\n'
 
 PY_EXCEPTION = \
-"""  File "<string>", line 1, in <module>
+b"""  File "<string>", line 1, in <module>
 TypeError: 'int' object is not iterable
 """
 
 CHILD_ERR_LINE = (
-    '2010-07-27 18:25:48,397 WARN'
-    ' org.apache.hadoop.mapred.TaskTracker (main): Error running child\n')
+    b'2010-07-27 18:25:48,397 WARN'
+    b' org.apache.hadoop.mapred.TaskTracker (main): Error running child\n')
 
-JAVA_STACK_TRACE = """java.lang.OutOfMemoryError: Java heap space
+JAVA_STACK_TRACE = b"""java.lang.OutOfMemoryError: Java heap space
         at org.apache.hadoop.mapred.IFile$Reader.readNextBlock(IFile.java:270)
         at org.apache.hadoop.mapred.IFile$Reader.next(IFile.java:332)
 """
 
-HADOOP_ERR_LINE_PREFIX = ('2010-07-27 19:53:35,451 ERROR'
-                          ' org.apache.hadoop.streaming.StreamJob (main): ')
+HADOOP_ERR_LINE_PREFIX = (b'2010-07-27 19:53:35,451 ERROR'
+                          b' org.apache.hadoop.streaming.StreamJob (main): ')
 
 USEFUL_HADOOP_ERROR = (
-    'Error launching job , Output path already exists :'
-    ' Output directory s3://yourbucket/logs/2010/07/23/ already exists'
-    ' and is not empty')
+    b'Error launching job , Output path already exists :'
+    b' Output directory s3://yourbucket/logs/2010/07/23/ already exists'
+    b' and is not empty')
 
-BORING_HADOOP_ERROR = 'Job not Successful!'
+BORING_HADOOP_ERROR = b'Job not Successful!'
 TASK_ATTEMPTS_DIR = LOG_DIR + 'task-attempts/'
 
 ATTEMPT_0_DIR = TASK_ATTEMPTS_DIR + 'attempt_201007271720_0001_m_000126_0/'
@@ -1288,9 +1290,10 @@ ATTEMPT_1_DIR = TASK_ATTEMPTS_DIR + 'attempt_201007271720_0001_m_000126_0/'
 
 
 def make_input_uri_line(input_uri):
-    return ("2010-07-27 17:55:29,400 INFO"
-            " org.apache.hadoop.fs.s3native.NativeS3FileSystem (main):"
-            " Opening '%s' for reading\n" % input_uri)
+    return (
+        "2010-07-27 17:55:29,400 INFO"
+        " org.apache.hadoop.fs.s3native.NativeS3FileSystem (main):"
+        " Opening '%s' for reading\n" % input_uri).encode('utf-8')
 
 
 class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
@@ -1329,7 +1332,7 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
         }})
         self.assertEqual(
             self.runner._find_probable_cause_of_failure([1]),
-            {'lines': list(StringIO(TRACEBACK_START + PY_EXCEPTION)),
+            {'lines': list(BytesIO(TRACEBACK_START + PY_EXCEPTION)),
              'log_file_uri': BUCKET_URI + ATTEMPT_0_DIR + 'stderr',
              'input_uri': BUCKET_URI + 'input.gz'})
 
@@ -1340,7 +1343,8 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
         }})
         self.assertEqual(
             self.runner._find_probable_cause_of_failure([1]),
-            {'lines': list(StringIO(TRACEBACK_START + PY_EXCEPTION)),
+            # TODO(davi) What should be the encoding of these returned fields?
+            {'lines': list(BytesIO(TRACEBACK_START + PY_EXCEPTION)),
              'log_file_uri': BUCKET_URI + ATTEMPT_0_DIR + 'stderr',
              'input_uri': None})
 
@@ -1356,7 +1360,7 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
         }})
         self.assertEqual(
             self.runner._find_probable_cause_of_failure([1]),
-            {'lines': list(StringIO(JAVA_STACK_TRACE)),
+            {'lines': list(BytesIO(JAVA_STACK_TRACE)),
              'log_file_uri': BUCKET_URI + ATTEMPT_0_DIR + 'syslog',
              'input_uri': BUCKET_URI + 'input.gz'})
 
@@ -1369,7 +1373,7 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
         }})
         self.assertEqual(
             self.runner._find_probable_cause_of_failure([1]),
-            {'lines': list(StringIO(JAVA_STACK_TRACE)),
+            {'lines': list(BytesIO(JAVA_STACK_TRACE)),
              'log_file_uri': BUCKET_URI + ATTEMPT_0_DIR + 'syslog',
              'input_uri': None})
 
@@ -1381,18 +1385,18 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
         self.add_mock_s3_data({'walrus': {
             LOG_DIR + 'steps/1/syslog':
                 GARBAGE +
-                HADOOP_ERR_LINE_PREFIX + BORING_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + BORING_HADOOP_ERROR + b'\n',
             LOG_DIR + 'steps/2/syslog':
                 GARBAGE +
                 make_input_uri_line(BUCKET_URI + 'input.gz') +
-                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n',
             LOG_DIR + 'steps/3/syslog':
-                HADOOP_ERR_LINE_PREFIX + BORING_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + BORING_HADOOP_ERROR + b'\n',
         }})
 
         self.assertEqual(
             self.runner._find_probable_cause_of_failure([1, 2, 3]),
-            {'lines': [USEFUL_HADOOP_ERROR + '\n'],
+            {'lines': [USEFUL_HADOOP_ERROR + b'\n'],
              'log_file_uri': BUCKET_URI + LOG_DIR + 'steps/2/syslog',
              'input_uri': None})
 
@@ -1412,9 +1416,9 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
     def test_later_step_logs_win(self):
         self.add_mock_s3_data({'walrus': {
             LOG_DIR + 'steps/1/syslog':
-                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n',
             LOG_DIR + 'steps/2/syslog':
-                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n',
         }})
         failure = self.runner._find_probable_cause_of_failure([1, 2])
         self.assertEqual(failure['log_file_uri'],
@@ -1460,7 +1464,7 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
             TASK_ATTEMPTS_DIR + 'attempt_201007271720_0002_m_000126_0/stderr':
                 TRACEBACK_START + PY_EXCEPTION,
             LOG_DIR + 'steps/1/syslog':
-                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n',
         }})
         failure = self.runner._find_probable_cause_of_failure([1, 2])
         self.assertEqual(failure['log_file_uri'],
@@ -1473,7 +1477,7 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
             TASK_ATTEMPTS_DIR + 'attempt_201007271720_0002_m_000126_0/stderr':
                 TRACEBACK_START + PY_EXCEPTION,
             LOG_DIR + 'steps/1/syslog':
-                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n',
+                HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n',
         }})
         failure = self.runner._find_probable_cause_of_failure([1])
         self.assertEqual(failure['log_file_uri'],
@@ -1497,13 +1501,13 @@ class FindProbableCauseOfFailureTestCase(MockEMRAndS3TestCase):
 class CounterFetchingTestCase(MockEMRAndS3TestCase):
 
     COUNTER_LINE = (
-        'Job JOBID="job_201106092314_0001" FINISH_TIME="1307662284564"'
-        ' JOB_STATUS="SUCCESS" FINISHED_MAPS="0" FINISHED_REDUCES="0"'
-        ' FAILED_MAPS="0" FAILED_REDUCES="0" COUNTERS="%s" .' % ''.join([
-            '{(org\.apache\.hadoop\.mapred\.JobInProgress$Counter)',
-            '(Job Counters )',
-            '[(TOTAL_LAUNCHED_REDUCES)(Launched reduce tasks)(1)]}',
-    ]))
+        b'Job JOBID="job_201106092314_0001" FINISH_TIME="1307662284564"' +
+        b' JOB_STATUS="SUCCESS" FINISHED_MAPS="0" FINISHED_REDUCES="0"' +
+        b' FAILED_MAPS="0" FAILED_REDUCES="0" COUNTERS="' + b''.join([
+            b'{(org\.apache\.hadoop\.mapred\.JobInProgress$Counter)',
+            b'(Job Counters )',
+            b'[(TOTAL_LAUNCHED_REDUCES)(Launched reduce tasks)(1)]}',
+    ]) + b'" .')
 
     def setUp(self):
         super(CounterFetchingTestCase, self).setUp()
@@ -1523,10 +1527,10 @@ class CounterFetchingTestCase(MockEMRAndS3TestCase):
     def test_empty_counters_running_job(self):
         self.runner._describe_jobflow().state = 'RUNNING'
         with no_handlers_for_logger():
-            stderr = StringIO()
+            stderr = BytesIO()
             log_to_stream('mrjob.emr', stderr)
             self.runner._fetch_counters([1], skip_s3_wait=True)
-            self.assertIn('5 minutes', stderr.getvalue())
+            self.assertIn(b'5 minutes', stderr.getvalue())
 
     def test_present_counters_running_job(self):
         self.add_mock_s3_data({'walrus': {
@@ -1622,7 +1626,7 @@ class LogFetchingFallbackTestCase(MockEMRAndS3TestCase):
         ssh_lone_log_path = posixpath.join(
             SSH_LOG_ROOT, 'steps', '1', 'syslog')
         mock_ssh_file('testmaster', ssh_lone_log_path,
-                      HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + '\n')
+                      HADOOP_ERR_LINE_PREFIX + USEFUL_HADOOP_ERROR + b'\n')
 
         # Put a 'more interesting' error in S3 to make sure that the
         # 'less interesting' one from SSH is read and S3 is never
@@ -1656,7 +1660,7 @@ class LogFetchingFallbackTestCase(MockEMRAndS3TestCase):
         mock_ssh_file('testmaster!testslave0', ssh_log_path,
                       TRACEBACK_START + PY_EXCEPTION)
         mock_ssh_file('testmaster!testslave0', ssh_log_path_2,
-                      '')
+                      b'')
         failure = self.runner._find_probable_cause_of_failure([1, 2])
         self.assertEqual(failure['log_file_uri'],
                          SSH_PREFIX + 'testmaster!testslave0' + ssh_log_path)
@@ -1828,11 +1832,11 @@ class TestSSHLs(MockEMRAndS3TestCase):
         self.add_slave()
 
         mock_ssh_dir('testmaster', 'test')
-        mock_ssh_file('testmaster', posixpath.join('test', 'one'), '')
-        mock_ssh_file('testmaster', posixpath.join('test', 'two'), '')
+        mock_ssh_file('testmaster', posixpath.join('test', 'one'), b'')
+        mock_ssh_file('testmaster', posixpath.join('test', 'two'), b'')
         mock_ssh_dir('testmaster!testslave0', 'test')
         mock_ssh_file('testmaster!testslave0',
-                      posixpath.join('test', 'three'), '')
+                      posixpath.join('test', 'three'), b'')
 
         self.assertEqual(
             sorted(self.runner.ls('ssh://testmaster/test')),
@@ -2122,15 +2126,15 @@ class EMRNoMapperTest(MockEMRAndS3TestCase):
         stdin = StringIO('foo\nbar\n')
 
         local_input_path = os.path.join(self.tmp_dir, 'input')
-        with open(local_input_path, 'w') as local_input_file:
-            local_input_file.write('bar\nqux\n')
+        with io.open(local_input_path, 'wb') as local_input_file:
+            local_input_file.write(b'bar\nqux\n')
 
         remote_input_path = 's3://walrus/data/foo'
-        self.add_mock_s3_data({'walrus': {'data/foo': 'foo\n'}})
+        self.add_mock_s3_data({'walrus': {'data/foo': b'foo\n'}})
 
         # setup fake output
         self.mock_emr_output = {('j-MOCKJOBFLOW0', 1): [
-            '1\t"qux"\n2\t"bar"\n', '2\t"foo"\n5\tnull\n']}
+            b'1\t"qux"\n2\t"bar"\n', b'2\t"foo"\n5\tnull\n']}
 
         mr_job = MRTwoStepJob(['-r', 'emr', '-v',
                                '-', local_input_path, remote_input_path])
@@ -2901,23 +2905,23 @@ class TestCatFallback(MockEMRAndS3TestCase):
 
     def test_s3_cat(self):
         self.add_mock_s3_data(
-            {'walrus': {'one': 'one_text',
-                        'two': 'two_text',
-                        'three': 'three_text'}})
+            {'walrus': {'one': b'one_text',
+                        'two': b'two_text',
+                        'three': b'three_text'}})
 
         runner = EMRJobRunner(s3_scratch_uri='s3://walrus/tmp',
                               conf_paths=[])
 
-        self.assertEqual(list(runner.cat('s3://walrus/one')), ['one_text\n'])
+        self.assertEqual(list(runner.cat('s3://walrus/one')), [b'one_text\n'])
 
     def test_ssh_cat(self):
         runner = EMRJobRunner(conf_paths=[])
         self.prepare_runner_for_ssh(runner)
-        mock_ssh_file('testmaster', 'etc/init.d', 'meow')
+        mock_ssh_file('testmaster', 'etc/init.d', b'meow')
 
         ssh_cat_gen = runner.cat(
             SSH_PREFIX + runner._address + '/etc/init.d')
-        self.assertEqual(list(ssh_cat_gen)[0].rstrip(), 'meow')
+        self.assertEqual(list(ssh_cat_gen)[0].rstrip(), b'meow')
         self.assertRaises(
             IOError, list,
             runner.cat(SSH_PREFIX + runner._address + '/does_not_exist'))
@@ -2927,7 +2931,7 @@ class TestCatFallback(MockEMRAndS3TestCase):
         runner = EMRJobRunner(conf_paths=[])
         self.prepare_runner_for_ssh(runner)
 
-        error_message = 'cat: logs/err.log: No such file or directory\n'
+        error_message = b'cat: logs/err.log: No such file or directory\n'
         mock_ssh_file('testmaster', 'logs/err.log', error_message)
         self.assertEqual(
             list(runner.cat(SSH_PREFIX + runner._address + '/logs/err.log')),
