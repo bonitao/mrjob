@@ -23,7 +23,7 @@ from six.moves.urllib_parse import ParseResult
 from six.moves.urllib_parse import urlparse as urlparse_buggy
 from six import BytesIO
 from six.moves import xrange
-from mrjob.portability import to_text, to_bytes
+from mrjob.portability import to_text, to_bytes, is_bytes
 
 
 from mrjob.compat import uses_020_counters
@@ -292,7 +292,7 @@ def find_input_uri_for_mapper(lines):
         match = _OPENING_FOR_READING_RE.match(line)
         if match:
             val = match.group(1)
-    return val
+    return to_text(val)
 
 
 _HADOOP_STREAMING_ERROR_RE = re.compile(
@@ -312,18 +312,19 @@ def find_interesting_hadoop_streaming_error(lines):
         2010-07-27 19:53:35,451 ERROR org.apache.hadoop.streaming.StreamJob (main): Error launching job , Output path already exists : Output directory s3://yourbucket/logs/2010/07/23/ already exists and is not empty
     """
     for line in lines:
+        assert(is_bytes(line))
         match = (
             _HADOOP_STREAMING_ERROR_RE.match(line) or
             _HADOOP_STREAMING_ERROR_RE_2.match(line))
         if match:
             msg = match.group(1)
-            if msg != 'Job not Successful!':
+            if msg != b'Job not Successful!':
                 return msg
     return None
 
 
 _MULTILINE_JOB_LOG_ERROR_RE = re.compile(
-    r'^\w+Attempt.*?TASK_STATUS="FAILED".*?ERROR="(?P<first_line>[^"]*)$')
+    br'^\w+Attempt.*?TASK_STATUS="FAILED".*?ERROR="(?P<first_line>[^"]*)$')
 
 
 def find_job_log_multiline_error(lines):
@@ -358,6 +359,7 @@ def find_job_log_multiline_error(lines):
     These errors are parsed from jobs/\*.jar.
     """
     for line in lines:
+        assert(is_bytes(line))
         m = _MULTILINE_JOB_LOG_ERROR_RE.match(line)
         if m:
             st_lines = []
@@ -366,7 +368,7 @@ def find_job_log_multiline_error(lines):
             for line in lines:
                 st_lines.append(line)
                 for line in lines:
-                    if line.strip() == '"':
+                    if line.strip() == b'"':
                         break
                     st_lines.append(line)
                 return st_lines
@@ -374,8 +376,8 @@ def find_job_log_multiline_error(lines):
 
 
 _TIMEOUT_ERROR_RE = re.compile(
-    r'.*?TASK_STATUS="FAILED".*?ERROR=".*?failed to report status for (\d+)'
-    r' seconds.*?"')
+    br'.*?TASK_STATUS="FAILED".*?ERROR=".*?failed to report status for (\d+)'
+    br' seconds.*?"')
 
 
 def find_timeout_error(lines):
@@ -461,7 +463,7 @@ _COUNTER_LINE_RE = re.compile(_COUNTER_LINE_EXPR)
 # 0.18-specific
 # see _parse_counters_0_18 for format
 # A counter looks like this: groupname.countername:countervalue
-_COUNTER_EXPR_0_18 = r'(,|^)(?P<group>[^,]+?)[.](?P<name>[^,]+):(?P<value>\d+)'
+_COUNTER_EXPR_0_18 = br'(,|^)(?P<group>[^,]+?)[.](?P<name>[^,]+):(?P<value>\d+)'
 _COUNTER_RE_0_18 = re.compile(_COUNTER_EXPR_0_18)
 
 # 0.20-specific
@@ -483,23 +485,27 @@ _COUNTER_0_20_EXPR = r'\[\(%s\)\(%s\)\(%s\)\]' % (r'(?P<counter_id>.*?)',
 _COUNTER_RE_0_20 = re.compile(to_bytes(_COUNTER_0_20_EXPR))
 
 
-def _parse_counters_0_18(counter_string):
+def _parse_counters_0_18(counter_bytes):
     # 0.18 counters look like this:
     # GroupName.CounterName:Value,Group1.Crackers:3,Group2.Nerf:243,...
-    groups = _COUNTER_RE_0_18.finditer(counter_string)
+    groups = _COUNTER_RE_0_18.finditer(counter_bytes)
     if groups is None:
-        log.warn('Cannot parse Hadoop counter string: %s' % counter_string)
+        log.warn('Cannot parse Hadoop counter string: %s' %
+                 str(counter_bytes))
 
     for m in groups:
-        yield m.group('group'), m.group('name'), int(m.group('value'))
+        yield (m.group('group').decode('utf-8'),
+               m.group('name').decode('utf-8'),
+               int(m.group('value').decode('utf-8')))
 
 
-def _parse_counters_0_20(counter_string):
+def _parse_counters_0_20(counter_bytes):
     # 0.20 counters look like this:
     # {(groupid)(groupname)[(counterid)(countername)(countervalue)][...]...}
-    groups = _GROUP_RE_0_20.findall(counter_string)
+    groups = _GROUP_RE_0_20.findall(counter_bytes)
     if not groups:
-        log.warn('Cannot parse Hadoop counter string: %s' % counter_string)
+        log.warn('Cannot parse Hadoop counter string: ' +
+                 str(counter_bytes) + '\n')
 
     for group_id, group_name, counter_str in groups:
         matches = _COUNTER_RE_0_20.findall(counter_str)

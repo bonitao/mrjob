@@ -41,6 +41,7 @@ from mrjob.parse import parse_port_range_list
 from mrjob.parse import parse_s3_uri
 from mrjob.parse import urlparse
 from mrjob.util import log_to_stream
+from mrjob.portability import to_bytes
 from tests.quiet import no_handlers_for_logger
 
 
@@ -147,89 +148,89 @@ class FindMiscTestCase(unittest.TestCase):
         self.assertEqual(find_interesting_hadoop_streaming_error([]), None)
 
     def test_find_input_uri_for_mapper(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             'garbage\n',
             "2010-07-27 17:54:54,344 INFO org.apache.hadoop.fs.s3native.NativeS3FileSystem (main): Opening 's3://yourbucket/logs/2010/07/23/log2-00077.gz' for reading\n",
             "2010-07-27 17:54:54,344 INFO org.apache.hadoop.fs.s3native.NativeS3FileSystem (main): Opening 's3://yourbucket/logs/2010/07/23/log2-00078.gz' for reading\n",
-        ]
+        ])
         self.assertEqual(find_input_uri_for_mapper(line for line in LOG_LINES),
                          's3://yourbucket/logs/2010/07/23/log2-00078.gz')
 
     def test_find_hadoop_java_stack_trace(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             'java.lang.NameError: "Oak" was one character shorter\n',
             '2010-07-27 18:25:48,397 WARN org.apache.hadoop.mapred.TaskTracker (main): Error running child\n',
             'java.lang.OutOfMemoryError: Java heap space\n',
             '        at org.apache.hadoop.mapred.IFile$Reader.readNextBlock(IFile.java:270)\n',
             'BLARG\n',
             '        at org.apache.hadoop.mapred.IFile$Reader.next(IFile.java:332)\n',
-        ]
+        ])
         self.assertEqual(
             find_hadoop_java_stack_trace(line for line in LOG_LINES),
-            ['java.lang.OutOfMemoryError: Java heap space\n',
-             '        at org.apache.hadoop.mapred.IFile$Reader.readNextBlock(IFile.java:270)\n'])
+            [b'java.lang.OutOfMemoryError: Java heap space\n',
+             b'        at org.apache.hadoop.mapred.IFile$Reader.readNextBlock(IFile.java:270)\n'])
 
     def test_find_interesting_hadoop_streaming_error(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             '2010-07-27 19:53:22,451 ERROR org.apache.hadoop.streaming.StreamJob (main): Job not Successful!\n',
             '2010-07-27 19:53:35,451 ERROR org.apache.hadoop.streaming.StreamJob (main): Error launching job , Output path already exists : Output directory s3://yourbucket/logs/2010/07/23/ already exists and is not empty\n',
             '2010-07-27 19:53:52,451 ERROR org.apache.hadoop.streaming.StreamJob (main): Job not Successful!\n',
-        ]
+        ])
 
         self.assertEqual(
             find_interesting_hadoop_streaming_error(line for line in LOG_LINES),
-            'Error launching job , Output path already exists : Output directory s3://yourbucket/logs/2010/07/23/ already exists and is not empty')
+            b'Error launching job , Output path already exists : Output directory s3://yourbucket/logs/2010/07/23/ already exists and is not empty')
 
     def test_find_timeout_error_1(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             'Task TASKID="task_201010202309_0001_m_000153" TASK_TYPE="MAP" TASK_STATUS="FAILED" FINISH_TIME="1287618918658" ERROR="Task attempt_201010202309_0001_m_000153_3 failed to report status for 602 seconds. Killing!"',
             'Task TASKID="task_201010202309_0001_m_000153" TASK_TYPE="MAP" TASK_STATUS="FAILED" FINISH_TIME="1287618918658" ERROR="Task attempt_201010202309_0001_m_000153_3 failed to report status for 602 seconds. Killing!"',
             'Task blahblah',
             'Bada bing!',
-        ]
-        LOG_LINES_2 = [
+        ])
+        LOG_LINES_2 = to_bytes([
             'Not a match',
-        ]
+        ])
 
         self.assertEqual(find_timeout_error(LOG_LINES), 602)
         self.assertEqual(find_timeout_error(LOG_LINES_2), None)
 
     def test_find_timeout_error_2(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             'Job JOBID="job_201105252346_0001" LAUNCH_TIME="1306367213950" TOTAL_MAPS="2" TOTAL_REDUCES="1" ',
             'Task TASKID="task_201105252346_0001_m_000000" TASK_TYPE="MAP" START_TIME="1306367217455" SPLITS="/default-rack/localhost" ',
             'MapAttempt TASK_TYPE="MAP" TASKID="task_201105252346_0001_m_000000" TASK_ATTEMPT_ID="attempt_201105252346_0001_m_000000_0" START_TIME="1306367223172" HOSTNAME="/default-rack/ip-10-168-73-40.us-west-1.compute.internal" ',
             'Task TASKID="task_201105252346_0001_m_000000" TASK_TYPE="MAP" TASK_STATUS="FAILED" FINISH_TIME="1306367233379" ERROR="Task attempt_201105252346_0001_m_000000_3 failed to report status for 0 seconds. Killing!"',
-        ]
+        ])
 
         self.assertEqual(find_timeout_error(LOG_LINES), 0)
 
     def test_find_timeout_error_3(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
            'MapAttempt TASK_TYPE="MAP" TASKID="task_201107201804_0001_m_000160" TASK_ATTEMPT_ID="attempt_201107201804_0001_m_000160_0" TASK_STATUS="FAILED" FINISH_TIME="1311188233290" HOSTNAME="/default-rack/ip-10-160-243-66.us-west-1.compute.internal" ERROR="Task attempt_201107201804_0001_m_000160_0 failed to report status for 1201 seconds. Killing!"  '
-        ]
+        ])
 
         self.assertEqual(find_timeout_error(LOG_LINES), 1201)
 
     def test_find_multiline_job_log_error(self):
-        LOG_LINES = [
+        LOG_LINES = to_bytes([
             'junk',
             'MapAttempt TASK_TYPE="MAP" TASKID="task_201106280040_0001_m_000218" TASK_ATTEMPT_ID="attempt_201106280040_0001_m_000218_5" TASK_STATUS="FAILED" FINISH_TIME="1309246900665" HOSTNAME="/default-rack/ip-10-166-239-133.us-west-1.compute.internal" ERROR="Error initializing attempt_201106280040_0001_m_000218_5:',
             'java.io.IOException: Cannot run program "bash": java.io.IOException: error=12, Cannot allocate memory',
             '    ... 10 more',
             '"',
             'junk'
-        ]
-        SHOULD_EQUAL = [
+        ])
+        SHOULD_EQUAL = to_bytes([
             'Error initializing attempt_201106280040_0001_m_000218_5:',
             'java.io.IOException: Cannot run program "bash": java.io.IOException: error=12, Cannot allocate memory',
             '    ... 10 more',
-        ]
+        ])
         self.assertEqual(
             find_job_log_multiline_error(line for line in LOG_LINES),
             SHOULD_EQUAL)
 
-    TEST_COUNTERS_0_18 = (
+    TEST_COUNTERS_0_18 = to_bytes(
         'Job JOBID="job_201106061823_0001" FINISH_TIME="1307384737542"'
         ' JOB_STATUS="SUCCESS" FINISHED_MAPS="2" FINISHED_REDUCES="1"'
         ' FAILED_MAPS="0" FAILED_REDUCES="0" COUNTERS="%s"' % ','.join([
@@ -255,7 +256,7 @@ class FindMiscTestCase(unittest.TestCase):
             'profile.mapper step ☃ estimated CPU time: 0.00:2'
         ]))
 
-    TEST_COUNTERS_0_20 = (
+    TEST_COUNTERS_0_20 = to_bytes(
         'Job JOBID="job_201106092314_0003" FINISH_TIME="1307662284564"'
         ' JOB_STATUS="SUCCESS" FINISHED_MAPS="2" FINISHED_REDUCES="1"'
         ' FAILED_MAPS="0" FAILED_REDUCES="0" COUNTERS="%s" .' % ''.join([
@@ -304,9 +305,9 @@ class FindMiscTestCase(unittest.TestCase):
             self.TEST_COUNTERS_0_18, hadoop_version='0.18')
 
         self.assertEqual(
-            counters['profile']['reducer step 0 estimated IO time: 0.00'], 1)
+            counters[u'profile'][u'reducer step 0 estimated IO time: 0.00'], 1)
         self.assertEqual(
-            counters['profile']['mapper step ☃ estimated CPU time: 0.00'], 2)
+            counters[u'profile'][u'mapper step ☃ estimated CPU time: 0.00'], 2)
         self.assertEqual(step_num, 1)
 
     def test_find_counters_0_20_explicit(self):
@@ -354,7 +355,7 @@ class FindMiscTestCase(unittest.TestCase):
                 r'FINISHED_MAPS="2" FINISHED_REDUCES="1" FAILED_MAPS="0" '
                 r'FAILED_REDUCES="0" COUNTERS="%s" .' % ''.join(counter_bits))
         counters, step_num = parse_hadoop_counters_from_line(
-                                line, hadoop_version='0.20')
+                                to_bytes(line), hadoop_version='0.20')
 
         self.assertIn('{}', counters['weird counters'])
         self.assertIn('()', counters['weird counters'])
@@ -365,7 +366,7 @@ class FindMiscTestCase(unittest.TestCase):
 
     def test_ambiguous_version_counter(self):
         # minimum text required to match counter line regex
-        line = r'JOBID="_1" COUNTERS="{(a.b:1,)(c)[(.d:2)(,e.f:2)(1)]}"'
+        line = br'JOBID="_1" COUNTERS="{(a.b:1,)(c)[(.d:2)(,e.f:2)(1)]}"'
         counters_018, _ = parse_hadoop_counters_from_line(
                             line, hadoop_version='0.18')
         counters_020, _ = parse_hadoop_counters_from_line(
@@ -395,7 +396,7 @@ class FindMiscTestCase(unittest.TestCase):
         self.assertRaises(ValueError, counter_unescape, '\\')
 
     def test_messy_error(self):
-        counter_string = 'Job JOBID="_001" FAILED_REDUCES="0" COUNTERS="THIS IS NOT ACTUALLY A COUNTER"'
+        counter_string = b'Job JOBID="_001" FAILED_REDUCES="0" COUNTERS="THIS IS NOT ACTUALLY A COUNTER"'
         with no_handlers_for_logger(''):
             stderr = StringIO()
             log_to_stream('mrjob.parse', stderr, level=logging.WARN)
@@ -405,9 +406,9 @@ class FindMiscTestCase(unittest.TestCase):
                           stderr.getvalue())
     def test_freaky_counter_names(self):
         freaky_name = r'\\\\\{\}\(\)\[\]\.\\\\'
-        counter_string = (r'Job JOBID="_001" FAILED_REDUCES="0" '
-                          r'COUNTERS="{(%s)(%s)[(a)(a)(1)]}"' %
-                            (freaky_name, freaky_name))
+        counter_string = to_bytes(r'Job JOBID="_001" FAILED_REDUCES="0" '
+                                  r'COUNTERS="{(%s)(%s)[(a)(a)(1)]}"' %
+                                  (freaky_name, freaky_name))
         self.assertIn('\\{}()[].\\',
                       parse_hadoop_counters_from_line(counter_string)[0])
 
@@ -425,7 +426,7 @@ class FindMiscTestCase(unittest.TestCase):
             ('\\(\\[\\{\\[\\[\\(\\{\\}\\(\\{', '([{[[({}({'),
             ('\\(\\{\\(\\{\\[\\{\\(\\{\\}\\}', '({({[{({}}')]
         for in_str, out_str in freakquences:
-            counter_string = (r'Job JOBID="_001" FAILED_REDUCES="0" '
+            counter_string = to_bytes(r'Job JOBID="_001" FAILED_REDUCES="0" '
                               r'COUNTERS="{(%s)(%s)[(a)(a)(1)]}"' %
                                  (in_str, in_str))
             self.assertIn(out_str,
@@ -437,9 +438,9 @@ class FindMiscTestCase(unittest.TestCase):
         reduce_counters = '{(red_counters)(red_counters)[(b)(b)(1)]}'
         all_counters = '{(all_counters)(all_counters)[(c)(c)(1)]}'
         tricksy_line = (
-            'Job JOBID="job_201106092314_0001" '
+            to_bytes('Job JOBID="job_201106092314_0001" '
             'MAP_COUNTERS="%s" REDUCE_COUNTERS="%s" COUNTERS="%s"' %
-                (map_counters, reduce_counters, all_counters))
+                (map_counters, reduce_counters, all_counters)))
         counters = parse_hadoop_counters_from_line(tricksy_line, '0.20')[0]
         self.assertEqual(counters, {'all_counters': {'c': 1}})
 
