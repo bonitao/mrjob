@@ -85,7 +85,8 @@ subprocess.CalledProcessError: Command 'cd yelp-src-tree.tar.gz; ln -sf $(readli
 
     def test_find_python_traceback(self):
         def run(*args):
-            return Popen(args, stdout=PIPE, stderr=PIPE).communicate()
+            return Popen(args, stdout=PIPE, stderr=PIPE,
+                         universal_newlines=False).communicate()
 
         # sanity-check normal operations
         ok_stdout, ok_stderr = run('python', '-c', "print(sorted('321'))")

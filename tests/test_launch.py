@@ -130,7 +130,8 @@ class CommandLineArgsTestCase(unittest.TestCase):
         # add . to PYTHONPATH (in case mrjob isn't actually installed)
         env = combine_envs(os.environ,
                            {'PYTHONPATH': os.path.abspath('.')})
-        proc = Popen(args, stderr=PIPE, stdout=PIPE, env=env)
+        proc = Popen(args, stderr=PIPE, stdout=PIPE, env=env,
+                     universal_newlines=False)
         proc.communicate()
         self.assertEqual(proc.returncode, 2)
 

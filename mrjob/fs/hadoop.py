@@ -78,7 +78,8 @@ class HadoopFilesystem(Filesystem):
 
         log.debug('> %s' % cmd_line(args))
 
-        proc = Popen(args, stdout=PIPE, stderr=PIPE)
+        proc = Popen(args, stdout=PIPE, stderr=PIPE,
+                     universal_newlines=False)
         stdout, stderr = proc.communicate()
 
         log_func = log.debug if proc.returncode == 0 else log.error
@@ -170,7 +171,8 @@ class HadoopFilesystem(Filesystem):
         cat_args = self._hadoop_bin + ['fs', '-cat', filename]
         log.debug('> %s' % cmd_line(cat_args))
 
-        cat_proc = Popen(cat_args, stdout=PIPE, stderr=PIPE)
+        cat_proc = Popen(cat_args, stdout=PIPE, stderr=PIPE,
+                         universal_newlines=False)
 
         def cleanup():
             # there shouldn't be any stderr

@@ -978,7 +978,8 @@ class RunJobTestCase(SandboxedTestCase):
         # add . to PYTHONPATH (in case mrjob isn't actually installed)
         env = combine_envs(os.environ,
                            {'PYTHONPATH': os.path.abspath('.')})
-        proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
+        proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env,
+                     universal_newlines=False)
         stdout, stderr = proc.communicate(input=b'foo\nbar\nbar\n')
         return stdout, stderr, proc.returncode
 

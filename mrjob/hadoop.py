@@ -48,6 +48,7 @@ from mrjob.parse import is_uri
 from mrjob.runner import MRJobRunner
 from mrjob.runner import RunnerOptionStore
 from mrjob.util import cmd_line
+from mrjob.portability import to_text
 
 
 log = logging.getLogger(__name__)
@@ -223,10 +224,10 @@ class HadoopJobRunner(MRJobRunner):
         if not self._hadoop_version:
             stdout = self.invoke_hadoop(['version'], return_stdout=True)
             if stdout:
-                first_line = stdout.split('\n')[0]
+                first_line = stdout.split(b'\n')[0]
                 m = HADOOP_VERSION_RE.match(first_line)
                 if m:
-                    self._hadoop_version = m.group('version')
+                    self._hadoop_version = to_text(m.group('version'))
                     log.info("Using Hadoop version %s" % self._hadoop_version)
                     return self._hadoop_version
             self._hadoop_version = '0.20.203'
@@ -318,7 +319,8 @@ class HadoopJobRunner(MRJobRunner):
                 pid, master_fd = pty.fork()
             except (AttributeError, OSError):
                 # no PTYs, just use Popen
-                step_proc = Popen(step_args, stdout=PIPE, stderr=PIPE)
+                step_proc = Popen(step_args, stdout=PIPE, stderr=PIPE,
+                                  universal_newlines=False)
 
                 self._process_stderr_from_streaming(step_proc.stderr)
 

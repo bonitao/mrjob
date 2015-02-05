@@ -381,7 +381,8 @@ class ArchiveTestCase(unittest.TestCase):
         # sometime the relevant command isn't available or doesn't work;
         # if so, skip the test
         proc = Popen(archive_command, cwd=join(self.tmp_dir, 'a'),
-                     stdout=PIPE, stderr=PIPE)
+                     stdout=PIPE, stderr=PIPE,
+                     universal_newlines=False)
         proc.communicate()  # discard output
         if proc.returncode != 0:
             self.skipTest("Can't run command to create archive.")

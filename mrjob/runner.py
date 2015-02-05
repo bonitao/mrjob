@@ -715,7 +715,8 @@ class MRJobRunner(object):
                 # add . to PYTHONPATH (in case mrjob isn't actually installed)
                 env = combine_local_envs(os.environ,
                                          {'PYTHONPATH': os.path.abspath('.')})
-                steps_proc = Popen(args, stdout=PIPE, stderr=PIPE, env=env)
+                steps_proc = Popen(args, stdout=PIPE, stderr=PIPE, env=env,
+                                   universal_newlines=False)
                 stdout, stderr = steps_proc.communicate()
 
                 if steps_proc.returncode != 0:
@@ -1239,7 +1240,7 @@ class MRJobRunner(object):
                 args = ['sort']
                 log.info('> %s' % cmd_line(args))
                 proc = Popen(args, stdin=PIPE, stdout=output, stderr=err,
-                             env=env)
+                             env=env, universal_newlines=False)
 
                 # shovel bytes into the sort process
                 for input_path in input_paths:

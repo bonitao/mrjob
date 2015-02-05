@@ -940,7 +940,8 @@ class EMRJobRunner(MRJobRunner):
             args.append('hadoop@' + host)
             log.debug('> %s' % cmd_line(args))
 
-            ssh_proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            ssh_proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                             universal_newlines=False)
             time.sleep(WAIT_FOR_SSH_TO_FAIL)
             ssh_proc.poll()
             # still running. We are golden
@@ -1569,7 +1570,8 @@ class EMRJobRunner(MRJobRunner):
                 cause_msg = []  # lines to log and put in exception
                 cause_msg.append('Probable cause of failure (from %s):' %
                                  cause['log_file_uri'])
-                cause_msg.extend(line.strip('\n') for line in cause['lines'])
+                cause_msg.extend(
+                    to_text(line.strip(b'\n')) for line in cause['lines'])
                 if cause['input_uri']:
                     cause_msg.append('(while reading from %s)' %
                                      cause['input_uri'])
@@ -1818,7 +1820,7 @@ class EMRJobRunner(MRJobRunner):
 
         Returns:
         None (nothing found) or a dictionary containing:
-        lines -- lines in the log file containing the error message
+        lines -- lines in the log file containing the error message as bytes
         log_file_uri -- the log file containing the error message
         input_uri -- if the error happened in a mapper in the first
             step, the URI of the input file that caused the error
@@ -1905,7 +1907,7 @@ class EMRJobRunner(MRJobRunner):
             mrjob_bootstrap.append([
                 "__mrjob_PYTHON_LIB=$(%s -c "
                 "'from distutils.sysconfig import get_python_lib;"
-                " print get_python_lib()')" %
+                " print(get_python_lib())')" %
                 cmd_line(self._opts['python_bin'])])
             # un-tar mrjob.tar.gz
             mrjob_bootstrap.append(
